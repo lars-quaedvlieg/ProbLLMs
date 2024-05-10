@@ -49,22 +49,7 @@ pip install flash-attn --no-build-isolation
 
 ### Setup via Docker Container
 
-```bash
-# Replace <my-docker> with the name of your docker image.
-docker build -f Dockerfile . -t <my-docker>
-docker run <my-docker>
-docker exec -it <my-docker> bash
-# Continue any bash operations ...
-
-# Replace <num-gpu> with the number of GPUs you have
-sudo docker run --gpus <num-gpu> -it -d  \
-    --name $NAME \
-    --rm --shm-size=128gb \
-    --network host \
-    -v /pure-mlo-scratch:/pure-mlo-scratch \
-    -v /home:/home meditron \
-    -- /bin/bash -c 'bash'
-```
+Head over to `docker-amd64-cuda` and follow the instructions in that folder for Docker setup with the cluster.
 
 ## Codebase Introduction
 
