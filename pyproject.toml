@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "general-experiments"
+readme = "README.md"
+license = { file = "LICENSE-CC-BY-NC-ND-4.0" }
+version = "0.0.1"
+requires-python = "==3.10.11"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/probllms"]
+
+[tool.isort]
+known_third_party = ["wandb"]
