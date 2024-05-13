@@ -12,6 +12,8 @@ from trl import DPOTrainer
 from probllms.data import get_dataset
 from probllms.models import Models
 
+from probllms.models import tokenize_and_generate
+
 
 @hydra.main(config_path="./config", config_name="default_dpo_lora", version_base="1.2")
 def run_experiment(hydra_config):
@@ -42,6 +44,22 @@ def run_experiment(hydra_config):
         cache_dir=hydra_config.cache_dir,
         model_config=model_config
     )
+
+    ### TODO: This is just for testing the model! ###
+    gen_config = {
+        "max_new_tokens": 100,
+    }
+    while True:
+        prompt = input("Ask a question: ")
+        gen_tokens, output = tokenize_and_generate(
+            model=model,
+            tokenizer=tokenizer,
+            prompt=prompt,
+            generation_config=gen_config,
+        )
+        print(type(gen_tokens))
+        print(output)
+    #################################################
 
     # TODO: Load the training dataset
     train_dataset = None
