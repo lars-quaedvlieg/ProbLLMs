@@ -1,0 +1,49 @@
+## Project parameters
+project_dir: /mnt/c/Projects/AlgorithmDistillation/
+
+## Instrumentation
+seed: 0 # random seed that will be set at the beginning of training.
+
+## Data parameters
+train_data_dir: ${project_dir}/data/  # the directory to obtain the train data from
+eval_data_dir: ${project_dir}/data/  # the directory to obtain the eval data from
+beta: 0.1 # the beta parameter for DPO loss
+
+## Training parameters
+model_name_or_path: deepseek-ai/deepseek-math-7b-rl # the location of the model name or path (MUST be supported)
+learning_rate: 5e-4 # optimizer learning rate
+lr_scheduler_type: cosine # the lr scheduler type
+warmup_steps: 100 # the number of warmup steps
+weight_decay: 0.05 # the weight decay
+optimizer_type: paged_adamw_32bit # the optimizer type
+
+per_device_train_batch_size: 4 # train batch size per device
+per_device_eval_batch_size: 1 # eval batch size per device
+gradient_accumulation_steps: 4 # the number of gradient accumulation steps
+gradient_checkpointing: true # whether to use gradient checkpointing
+
+gradient_checkpointing_use_reentrant: false # whether to use reentrant for gradient checkpointing
+
+lora_alpha: 16 # the lora alpha parameter
+lora_dropout: 0.05 # the lora dropout parameter
+lora_r: 8 # the lora r parameter
+
+max_prompt_length: 512 # the maximum prompt length
+max_length: 1024 # the maximum sequence length
+max_steps: 1000 # max number of training steps
+logging_steps: 10 # the logging frequency
+save_steps: 100 # the saving frequency
+eval_steps: 100 # the evaluation frequency
+
+output_dir: ${project_dir}/out/ # the output directory
+log_freq: 1 # the logging frequency
+load_in_4bit: true # whether to load the model in 4bit
+model_dtype: float16 # model_dtype[float16, bfloat16, float] for loading.
+
+## Wandb
+wandb:
+  entity: probllms
+  project: probllms
+  name: dpo_lora_finetune-${now:%Y-%m-%d-%H-%M-%S}
+  log_directory: ${output_dir}/training/${name}
+  active: false
