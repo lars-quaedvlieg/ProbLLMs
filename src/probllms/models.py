@@ -10,10 +10,10 @@ class Models(Enum):
     Llama3_8B = "meta-llama/Meta-Llama-3-8B"
     Llama3_70B = "meta-llama/Meta-Llama-3-70B"
 
-    def load_model_and_tokenizer(self, model_config: dict[str, Any]):
+    def load_model_and_tokenizer(self, cache_dir: str, model_config: dict[str, Any]):
         model_name = self.value
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", **model_config)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir)
         model.generation_config = GenerationConfig.from_pretrained(model_name)
 
         # Some settings

@@ -1,5 +1,6 @@
 ## Project parameters
-project_dir: /mnt/c/Projects/AlgorithmDistillation/
+project_dir: /mnt/c/Users/Larsq/Desktop/Studies/Y2S2/Modern NLP/ProbLLMs  # Project directory
+cache_dir: ${project_dir}/cached_models # Where to store the models
 
 ## Instrumentation
 seed: 0 # random seed that will be set at the beginning of training.
@@ -10,7 +11,7 @@ eval_data_dir: ${project_dir}/data/  # the directory to obtain the eval data fro
 beta: 0.1 # the beta parameter for DPO loss
 
 ## Training parameters
-model_name_or_path: deepseek-ai/deepseek-math-7b-rl # the location of the model name or path (MUST be supported)
+model_name_or_path: DeepSeekMath_7B # the location of the model name or path (MUST be supported)
 learning_rate: 5e-4 # optimizer learning rate
 lr_scheduler_type: cosine # the lr scheduler type
 warmup_steps: 100 # the number of warmup steps
@@ -45,5 +46,5 @@ wandb:
   entity: probllms
   project: probllms
   name: dpo_lora_finetune-${now:%Y-%m-%d-%H-%M-%S}
-  log_directory: ${output_dir}/training/${name}
+  log_directory: ${output_dir}/training/${wandb.name}
   active: false

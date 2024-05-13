@@ -7,30 +7,20 @@ from accelerate import Accelerator
 from omegaconf import omegaconf
 from peft import LoraConfig
 from transformers import set_seed, TrainingArguments
-from trl import DPOConfig, DPOTrainer
+from trl import DPOTrainer
 
-from src.probllms.data import get_dataset
-from src.probllms.models import Models
+from probllms.data import get_dataset
+from probllms.models import Models
 
 
-@hydra.main(config_path="./configs", config_name="default_dpo_lora", version_base="1.2")
+@hydra.main(config_path="./config", config_name="default_dpo_lora", version_base="1.2")
 def run_experiment(hydra_config):
-    # Set up logging
+    # Set up logging with HuggingFace
     if hydra_config.wandb.active:
-        # Parse configuration into dict
-        config = omegaconf.OmegaConf.to_container(
-            hydra_config, resolve=True, throw_on_missing=True
-        )
-
-        wandb.init(
-            entity=hydra_config.wandb.entity,
-            project=hydra_config.wandb.project,
-            name=hydra_config.wandb.name,
-            dir=hydra_config.wandb.log_directory,
-            config=config,
-        )
-    else:
-        wandb.init(mode="offline", dir=hydra_config.wandb.log_directory)
+        os.environ["WANDB_PROJECT"] = hydra_config.wandb.project
+        os.environ["WANDB_ENTITY"] = hydra_config.wandb.entity
+        os.environ["WANDB_NAME"] = hydra_config.wandb.name
+        os.environ["WANDB_DIR"] = hydra_config.wandb.log_directory
 
     set_seed(hydra_config.seed)
 
@@ -42,14 +32,16 @@ def run_experiment(hydra_config):
         torch_dtype = torch.bfloat16
 
     model_config = {
-        "pretrained_model_name_or_path": hydra_config.model_name_or_path,
         "low_cpu_mem_usage": True,
         "torch_dtype": torch_dtype,
         "load_in_4bit": hydra_config.load_in_4bit,
         "device_map": {"": Accelerator().local_process_index},
     }
 
-    model, tokenizer = Models[hydra_config.model_name_or_path].load_model_and_tokenizer(model_config=model_config)
+    model, tokenizer = Models[hydra_config.model_name_or_path].load_model_and_tokenizer(
+        cache_dir=hydra_config.cache_dir,
+        model_config=model_config
+    )
 
     # TODO: Load the training dataset
     train_dataset = None
@@ -82,7 +74,7 @@ def run_experiment(hydra_config):
         evaluation_strategy="steps",
         eval_steps=hydra_config.eval_steps,
         output_dir=hydra_config.output_dir,
-        report_to=hydra_config.report_to,
+        report_to="wandb" if hydra_config.wandb.active else None,
         lr_scheduler_type=hydra_config.lr_scheduler_type,
         warmup_steps=hydra_config.warmup_steps,
         optim=hydra_config.optimizer_type,
