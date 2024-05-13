@@ -6,7 +6,7 @@ import wandb
 from accelerate import Accelerator
 from omegaconf import omegaconf
 from peft import LoraConfig
-from transformers import set_seed
+from transformers import set_seed, TrainingArguments
 from trl import DPOConfig, DPOTrainer
 
 from src.probllms.data import get_dataset
@@ -69,10 +69,11 @@ def run_experiment(hydra_config):
     # )
 
     # initialize training arguments:
-    training_args = DPOConfig(
+    training_args = TrainingArguments(
         per_device_train_batch_size=hydra_config.per_device_train_batch_size,
         per_device_eval_batch_size=hydra_config.per_device_eval_batch_size,
         max_steps=hydra_config.max_steps,
+        logging_dir=hydra_config.output_dir,
         logging_steps=hydra_config.logging_steps,
         save_steps=hydra_config.save_steps,
         gradient_accumulation_steps=hydra_config.gradient_accumulation_steps,
