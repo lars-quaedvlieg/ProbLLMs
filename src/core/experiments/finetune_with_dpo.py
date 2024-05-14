@@ -45,38 +45,41 @@ def run_experiment(hydra_config):
         model_config=model_config
     )
 
-    ### TODO: This is just for testing the model! ###
-    gen_config = {
-        "max_new_tokens": 100,
-    }
-    while True:
-        prompt = input("Ask a question: ")
-        gen_tokens, output = tokenize_and_generate(
-            model=model,
-            tokenizer=tokenizer,
-            prompt=prompt,
-            generation_config=gen_config,
-        )
-        print(type(gen_tokens))
-        print(output)
-    #################################################
+    # ### TODO: This is just for testing the model! ###
+    # gen_config = {
+    #     "max_new_tokens": 1024,
+    # }
+    # while True:
+    #     prompt = input("Ask a question: ")
+    #     gen_tokens, output = tokenize_and_generate(
+    #         model=model,
+    #         tokenizer=tokenizer,
+    #         prompt=prompt,
+    #         generation_config=gen_config,
+    #     )
+    #     print(type(gen_tokens))
+    #     print(output)
+    # #################################################
 
-    # TODO: Load the training dataset
-    train_dataset = None
-    # train_dataset = get_dataset(data_dir=hydra_config.data_dir)
-    # # Filter prompts that are too long
-    # train_dataset = train_dataset.filter(
-    #     lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
-    #               and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
-    # )
+    # Load the training dataset
+    train_dataset = get_dataset(file_path=hydra_config.train_data_path)
+    # Filter questions that are too long
+    initial_len = len(train_dataset)
+    train_dataset = train_dataset.filter(
+        lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
+                  and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
+    )
+    print(f'Kept {round(len(train_dataset) / initial_len, 2):<.2f}% of the training data')
 
-    # TODO: Load the evaluation dataset
-    eval_dataset = None
-    # eval_dataset = get_dataset(data_dir=hydra_config.eval_data_dir)
-    # eval_dataset = eval_dataset.filter(
-    #     lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
-    #               and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
-    # )
+    # Load the evaluation dataset
+    eval_dataset = get_dataset(file_path=hydra_config.eval_data_path)
+    # Filter questions that are too long
+    initial_len = len(eval_dataset)
+    eval_dataset = eval_dataset.filter(
+        lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
+                  and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
+    )
+    print(f'Kept {round(len(eval_dataset) / initial_len, 2):<.2f}% of the evaluation data')
 
     # initialize training arguments:
     training_args = TrainingArguments(
@@ -123,7 +126,7 @@ def run_experiment(hydra_config):
     # 5. initialize the DPO trainer
     dpo_trainer = DPOTrainer(
         model,
-        ref_model=None,
+        ref_model=None,  # Will automatically create a reference model from the original
         args=training_args,
         beta=hydra_config.beta,
         train_dataset=train_dataset,

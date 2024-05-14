@@ -6,8 +6,8 @@ cache_dir: ${project_dir}/cached_models # Where to store the models
 seed: 0 # random seed that will be set at the beginning of training.
 
 ## Data parameters
-train_data_dir: ${project_dir}/data/  # the directory to obtain the train data from
-eval_data_dir: ${project_dir}/data/  # the directory to obtain the eval data from
+train_data_path: ${project_dir}/datasets/dpo_preference_train.jsonl  # the directory to obtain the train datasets from
+eval_data_path: ${project_dir}/datasets/dpo_preference_eval.jsonl  # the directory to obtain the eval datasets from
 beta: 0.1 # the beta parameter for DPO loss
 
 ## Training parameters
@@ -29,8 +29,8 @@ lora_alpha: 16 # the lora alpha parameter
 lora_dropout: 0.05 # the lora dropout parameter
 lora_r: 8 # the lora r parameter
 
-max_prompt_length: 512 # the maximum prompt length
-max_length: 1024 # the maximum sequence length
+max_prompt_length: 1024 # the maximum prompt length
+max_length: 2048 # the maximum sequence length for both the question and answer combined
 max_steps: 1000 # max number of training steps
 logging_steps: 10 # the logging frequency
 save_steps: 100 # the saving frequency
@@ -47,4 +47,4 @@ wandb:
   project: probllms
   name: dpo_lora_finetune-${now:%Y-%m-%d-%H-%M-%S}
   log_directory: ${output_dir}/training/${wandb.name}
-  active: false
+  active: true

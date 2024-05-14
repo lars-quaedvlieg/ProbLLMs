@@ -13,3 +13,4 @@ peft
 # Added by us as a group
 trl
 hydra-core
+gpustat
