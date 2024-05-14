@@ -69,7 +69,7 @@ def run_experiment(hydra_config):
         lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
                   and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
     )
-    print(f'Kept {round(len(train_dataset) / initial_len, 2):<.2f}% of the training data')
+    print(f'Kept {round(len(train_dataset) / initial_len, 2)*100:<.2f}% of the training data')
 
     # Load the evaluation dataset
     eval_dataset = get_dataset(file_path=hydra_config.eval_data_path)
@@ -79,7 +79,7 @@ def run_experiment(hydra_config):
         lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
                   and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
     )
-    print(f'Kept {round(len(eval_dataset) / initial_len, 2):<.2f}% of the evaluation data')
+    print(f'Kept {round(len(eval_dataset) / initial_len, 2)*1002:<.2f}% of the evaluation data')
 
     # initialize training arguments:
     training_args = TrainingArguments(
@@ -101,7 +101,7 @@ def run_experiment(hydra_config):
         optim=hydra_config.optimizer_type,
         bf16=True,
         remove_unused_columns=False,
-        run_name="dpo_llama2",
+        run_name=hydra_config.wandb.name,
         gradient_checkpointing_kwargs=dict(use_reentrant=hydra_config.gradient_checkpointing_use_reentrant),
         seed=hydra_config.seed,
     )
@@ -129,8 +129,8 @@ def run_experiment(hydra_config):
         ref_model=None,  # Will automatically create a reference model from the original
         args=training_args,
         beta=hydra_config.beta,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        train_dataset=train_dataset["train"],
+        eval_dataset=eval_dataset["train"],
         tokenizer=tokenizer,
         peft_config=peft_config,
         max_prompt_length=hydra_config.max_prompt_length,
