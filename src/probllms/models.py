@@ -9,6 +9,7 @@ class Models(Enum):
     DeepSeekMath_7B = "deepseek-ai/deepseek-math-7b-rl"
     Llama3_8B = "meta-llama/Meta-Llama-3-8B"
     Llama3_70B = "meta-llama/Meta-Llama-3-70B"
+    GPT2 = "openai-community/gpt2"
 
     def load_model_and_tokenizer(self, cache_dir: str, model_config: dict[str, Any]):
         model_name = self.value
