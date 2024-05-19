@@ -79,6 +79,7 @@ if __name__ == '__main__':
     dataset = load_dataset(args.dataset)
     selected_indices = random.sample(range(len(dataset['train'])), 2500)
     
+    length = 0
     if os.path.exists(f'../datasets/{args.name}.jsonl'):
         length = sum(1 for line in open(f'../datasets/{args.name}.jsonl'))
     
