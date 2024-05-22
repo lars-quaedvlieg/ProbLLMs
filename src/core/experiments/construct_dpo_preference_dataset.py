@@ -6,7 +6,11 @@ import jsonlines
 from tqdm import tqdm
 
 DATA_PATH = "../datasets"
-PREF_FILE_NAME = "M1_preference_data_07052024.json"
+PREF_FILE_NAME = "M1_preference_data_15052024.json"
+
+ADDITIONAL_DATASET_NAMES = ['camel-ai-math.jsonl', 'camel-ai-physics.jsonl', 'cs_theoryQA.jsonl']
+
+TEST_SET_PROB = 0.2
 
 random.seed(0)
 
@@ -23,7 +27,7 @@ if __name__ == '__main__':
         for answer_pref_data in question_pref_data["preference"]:
             # Skip answers without a preference
             chosen_answer_char = answer_pref_data["overall"]
-            if chosen_answer_char not in {'A', 'B'}:
+            if chosen_answer_char not in {'A', 'B'} or answer_pref_data['criteria']['correctness'] not in {'A', 'B', 'AB'}:
                 num_wrong_formatted_preferences += 1
                 continue
             rejected_answer_char = 'B' if answer_pref_data["overall"] == 'A' else 'A'
@@ -34,16 +38,30 @@ if __name__ == '__main__':
                 "rejected": answer_pref_data[rejected_answer_char],
             }
 
-            # We sample according to the number of question pairs per question, aiming to have one eval per question
-            # We offset it by 3, so questions with only 1 pair have a 2/4 chance to get sampled, 2 pairs: 2/5, etc...
-            if random.random() < 2. / (num_pairs + 4):
+            # We sample uniformly random
+            if random.random() < TEST_SET_PROB:
                 formatted_eval_preference_data.append(formatted_pair)
             else:
                 formatted_train_preference_data.append(formatted_pair)
 
-    print(f'There are {len(formatted_train_preference_data)} preference pairs in the train dataset!')
-    print(f'There are {len(formatted_eval_preference_data)} preference pairs in the evaluation dataset!')
-    print(f'In total there were {num_wrong_formatted_preferences} incorrectly formatted skipped preferences...')
+    print('Student preference pairs:')
+    print(f'\tThere are {len(formatted_train_preference_data)} preference pairs in the train dataset!')
+    print(f'\tThere are {len(formatted_eval_preference_data)} preference pairs in the evaluation dataset!')
+    print(f'\tIn total there were {num_wrong_formatted_preferences} wrong answers skipped preferences...')
+
+    # Now we load our additional datasets
+    for dataset_name in ADDITIONAL_DATASET_NAMES:
+        with jsonlines.open(os.path.join(DATA_PATH, dataset_name)) as reader:
+            for preference_pair in reader:
+                # We sample uniformly random again
+                if random.random() < TEST_SET_PROB:
+                    formatted_eval_preference_data.append(preference_pair)
+                else:
+                    formatted_train_preference_data.append(preference_pair)
+
+    print('Final preference pairs:')
+    print(f'\tThere are {len(formatted_train_preference_data)} preference pairs in the train dataset!')
+    print(f'\tThere are {len(formatted_eval_preference_data)} preference pairs in the evaluation dataset!')
 
     # Writing the train preference dataset
     with jsonlines.open(os.path.join(DATA_PATH, "dpo_preference_train.jsonl"), mode='w') as writer:

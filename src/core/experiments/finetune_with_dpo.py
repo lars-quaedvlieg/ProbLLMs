@@ -79,7 +79,7 @@ def run_experiment(hydra_config):
         lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
                   and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
     )
-    print(f'Kept {round(len(eval_dataset) / initial_len, 2)*1002:<.2f}% of the evaluation data')
+    print(f'Kept {round(len(eval_dataset) / initial_len, 2)*100:<.2f}% of the evaluation data')
 
     # initialize training arguments:
     training_args = TrainingArguments(
@@ -137,12 +137,14 @@ def run_experiment(hydra_config):
         max_length=hydra_config.max_length,
     )
 
+    print(model)
+
     # 6. train
     dpo_trainer.train()
     dpo_trainer.save_model(hydra_config.output_dir)
 
     # 7. save
-    output_dir = os.path.join(hydra_config.output_dir, "final_checkpoint")
+    output_dir = os.path.join(hydra_config.output_dir, hydra_config.wandb.name, "final_checkpoint")
     dpo_trainer.model.save_pretrained(output_dir)
 
 
