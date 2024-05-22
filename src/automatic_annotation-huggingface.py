@@ -13,7 +13,7 @@ from datasets import load_dataset
 
 # Loads the variables from the .env-file (such as the GPT_API_KEY)
 load_dotenv()
-random.seed(42)
+random.seed(12)
 
 gpt_wrapper.api_base = os.getenv('GPT_API_BASE')
 gpt_wrapper.api_key = os.getenv('GPT_API_KEY')
@@ -77,11 +77,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dataset = load_dataset(args.dataset)
-    selected_indices = random.sample(range(len(dataset['train'])), 2500)
+    selected_indices = random.sample(range(len(dataset['train'])), 3050)
     
     length = 0
     if os.path.exists(f'../datasets/{args.name}.jsonl'):
-        length = sum(1 for line in open(f'../datasets/{args.name}.jsonl'))
+        length = sum(1 for line in open(f'../datasets/{args.name}.jsonl', encoding='utf-8'))
     
     for index in tqdm(selected_indices[length:]):
         intent = dataset['train'][index]
@@ -107,7 +107,7 @@ if __name__ == '__main__':
                     next_answer = None
                     
                 cnt += 1
-                if cnt > 5:
+                if cnt > 2:
                     break
                 
             answer = next_answer['content'] if next_answer is not None else answer
