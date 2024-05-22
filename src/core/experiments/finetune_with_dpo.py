@@ -2,17 +2,13 @@ import os
 
 import hydra
 import torch
-import wandb
 from accelerate import Accelerator
-from omegaconf import omegaconf
 from peft import LoraConfig
 from transformers import set_seed, TrainingArguments
 from trl import DPOTrainer
 
 from probllms.data import get_dataset
 from probllms.models import Models
-
-from probllms.models import tokenize_and_generate
 
 
 @hydra.main(config_path="./config", config_name="default_dpo_lora", version_base="1.2")
@@ -141,11 +137,11 @@ def run_experiment(hydra_config):
 
     # 6. train
     dpo_trainer.train()
-    dpo_trainer.save_model(hydra_config.output_dir)
 
     # 7. save
-    output_dir = os.path.join(hydra_config.output_dir, hydra_config.wandb.name, "final_checkpoint")
-    dpo_trainer.model.save_pretrained(output_dir)
+    output_dir = os.path.join(hydra_config.output_dir, hydra_config.wandb.name)
+    dpo_trainer.save_model(output_dir)
+    dpo_trainer.model.save_pretrained(os.path.join(output_dir, "final_checkpoint"))
 
 
 if __name__ == "__main__":
