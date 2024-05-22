@@ -16,7 +16,7 @@ learning_rate: 5e-4 # optimizer learning rate
 lr_scheduler_type: cosine # the lr scheduler type
 warmup_steps: 100 # the number of warmup steps
 weight_decay: 0.05 # the weight decay
-optimizer_type: adamw_torch # the optimizer type
+optimizer_type: paged_adamw_32bit # the optimizer type
 
 per_device_train_batch_size: 12 # train batch size per device
 per_device_eval_batch_size: 4 # eval batch size per device
@@ -34,7 +34,7 @@ max_length: 2048 # the maximum sequence length for both the question and answer 
 max_steps: 2000 # max number of training steps
 logging_steps: 10 # the logging frequency
 save_steps: 100 # the saving frequency
-eval_steps: 100 # the evaluation frequency
+eval_steps: 5 # the evaluation frequency
 
 output_dir: ${project_dir}/out/ # the output directory
 log_freq: 10 # the logging frequency
