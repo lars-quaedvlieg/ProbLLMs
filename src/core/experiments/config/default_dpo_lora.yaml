@@ -1,5 +1,5 @@
 ## Project parameters
-project_dir: /mnt/c/Users/Larsq/Desktop/Studies/Y2S2/Modern NLP/ProbLLMs  # Project directory
+project_dir: . #/mnt/c/Users/Larsq/Desktop/Studies/Y2S2/Modern NLP/ProbLLMs  # Project directory
 cache_dir: ${project_dir}/cached_models # Where to store the models
 
 ## Instrumentation
@@ -8,7 +8,7 @@ seed: 0 # random seed that will be set at the beginning of training.
 ## Data parameters
 train_data_path: ${project_dir}/datasets/dpo_preference_train.jsonl  # the directory to obtain the train datasets from
 eval_data_path: ${project_dir}/datasets/dpo_preference_eval.jsonl  # the directory to obtain the eval datasets from
-beta: 0.1 # the beta parameter for DPO loss
+beta: 0.05 # the beta parameter for DPO loss
 
 ## Training parameters
 model_name_or_path: DeepSeekMath_7B # the location of the model name or path (MUST be supported)
@@ -18,9 +18,9 @@ warmup_steps: 100 # the number of warmup steps
 weight_decay: 0.05 # the weight decay
 optimizer_type: paged_adamw_32bit # the optimizer type
 
-per_device_train_batch_size: 4 # train batch size per device
-per_device_eval_batch_size: 1 # eval batch size per device
-gradient_accumulation_steps: 4 # the number of gradient accumulation steps
+per_device_train_batch_size: 12 # train batch size per device
+per_device_eval_batch_size: 4 # eval batch size per device
+gradient_accumulation_steps: 1 # the number of gradient accumulation steps
 gradient_checkpointing: true # whether to use gradient checkpointing
 
 gradient_checkpointing_use_reentrant: false # whether to use reentrant for gradient checkpointing
@@ -31,14 +31,14 @@ lora_r: 8 # the lora r parameter
 
 max_prompt_length: 1024 # the maximum prompt length
 max_length: 2048 # the maximum sequence length for both the question and answer combined
-max_steps: 1000 # max number of training steps
+max_steps: 2000 # max number of training steps
 logging_steps: 10 # the logging frequency
 save_steps: 100 # the saving frequency
-eval_steps: 100 # the evaluation frequency
+eval_steps: 5 # the evaluation frequency
 
 output_dir: ${project_dir}/out/ # the output directory
-log_freq: 1 # the logging frequency
-load_in_4bit: true # whether to load the model in 4bit
+log_freq: 10 # the logging frequency
+load_in_4bit: false # whether to load the model in 4bit
 model_dtype: float16 # model_dtype[float16, bfloat16, float] for loading.
 
 ## Wandb
