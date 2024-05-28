@@ -78,11 +78,12 @@ def run_experiment(hydra_config):
     print(f'Kept {round(len(eval_dataset) / initial_len, 2)*100:<.2f}% of the evaluation data')
 
     # initialize training arguments:
+    output_dir = os.path.join(hydra_config.output_dir, hydra_config.wandb.name)
     training_args = TrainingArguments(
         per_device_train_batch_size=hydra_config.per_device_train_batch_size,
         per_device_eval_batch_size=hydra_config.per_device_eval_batch_size,
         max_steps=hydra_config.max_steps,
-        logging_dir=hydra_config.output_dir,
+        logging_dir=output_dir,
         logging_steps=hydra_config.logging_steps,
         save_steps=hydra_config.save_steps,
         gradient_accumulation_steps=hydra_config.gradient_accumulation_steps,
@@ -90,7 +91,7 @@ def run_experiment(hydra_config):
         learning_rate=hydra_config.learning_rate,
         evaluation_strategy="steps",
         eval_steps=hydra_config.eval_steps,
-        output_dir=hydra_config.output_dir,
+        output_dir=output_dir,
         report_to="wandb" if hydra_config.wandb.active else None,
         lr_scheduler_type=hydra_config.lr_scheduler_type,
         warmup_steps=hydra_config.warmup_steps,
@@ -128,7 +129,6 @@ def run_experiment(hydra_config):
     dpo_trainer.train()
 
     # 7. save
-    output_dir = os.path.join(hydra_config.output_dir, hydra_config.wandb.name)
     dpo_trainer.save_model(output_dir)
     dpo_trainer.model.save_pretrained(os.path.join(output_dir, "final_checkpoint"))
 
