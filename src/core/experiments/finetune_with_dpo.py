@@ -8,7 +8,7 @@ from transformers import set_seed, TrainingArguments
 from trl import DPOTrainer
 
 from probllms.data import get_dataset
-from probllms.models import Models
+from probllms.models import Models, print_trainable_parameters
 
 
 @hydra.main(config_path="./config", config_name="default_dpo_lora", version_base="1.2")
@@ -108,6 +108,8 @@ def run_experiment(hydra_config):
         lora_dropout=hydra_config.lora_dropout,
         task_type="CAUSAL_LM",
     )
+
+    print_trainable_parameters(model)
 
     # 5. initialize the DPO trainer
     dpo_trainer = DPOTrainer(

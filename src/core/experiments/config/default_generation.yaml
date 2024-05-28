@@ -1,0 +1,15 @@
+## Project parameters
+project_dir: . #/mnt/c/Users/Larsq/Desktop/Studies/Y2S2/Modern NLP/ProbLLMs  # Project directory
+cache_dir: ${project_dir}/cached_models # Where to store the models
+
+## Instrumentation
+seed: 0 # random seed that will be set at the beginning of training.
+
+## Model parameters
+model_name_or_path: DeepSeekMath_7B # the location of the model name or path (MUST be supported)
+peft_model_path: ${project_dir}/out/
+
+load_in_4bit: false # whether to load the model in 4bit
+model_dtype: bfloat16 # model_dtype[float16, bfloat16, float] for loading.
+
+max_generation_length: 1024 # the maximum response length

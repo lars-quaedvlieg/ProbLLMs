@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Any
 
 import torch
+from peft import AutoPeftModelForCausalLM
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 
 
@@ -15,6 +16,19 @@ class Models(Enum):
         model_name = self.value
         tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
         model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir)
+        model.generation_config = GenerationConfig.from_pretrained(model_name)
+
+        # Some settings
+        model.config.use_cache = False
+        model.generation_config.pad_token_id = model.generation_config.eos_token_id
+        tokenizer.pad_token = tokenizer.eos_token
+
+        return model, tokenizer
+
+    def load_peft_model_and_tokenizer(self, model_tokenizer_path: str, cache_dir: str, model_config: dict[str, Any]):
+        model_name = self.value
+        tokenizer = AutoTokenizer.from_pretrained(model_tokenizer_path, cache_dir=cache_dir)
+        model = AutoPeftModelForCausalLM.from_pretrained(model_tokenizer_path, **model_config, cache_dir=cache_dir)
         model.generation_config = GenerationConfig.from_pretrained(model_name)
 
         # Some settings
@@ -44,3 +58,18 @@ def tokenize_and_generate(
     result_str = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
     return generated_tokens, result_str
+
+
+def print_trainable_parameters(model):
+    """
+    Prints the number of trainable parameters in the model.
+    """
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        all_param += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    print(
+        f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
+    )

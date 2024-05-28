@@ -34,12 +34,12 @@ max_length: 2048 # the maximum sequence length for both the question and answer 
 max_steps: 2000 # max number of training steps
 logging_steps: 10 # the logging frequency
 save_steps: 100 # the saving frequency
-eval_steps: 5 # the evaluation frequency
+eval_steps: 100 # the evaluation frequency
 
 output_dir: ${project_dir}/out/ # the output directory
 log_freq: 10 # the logging frequency
 load_in_4bit: false # whether to load the model in 4bit
-model_dtype: float16 # model_dtype[float16, bfloat16, float] for loading.
+model_dtype: bfloat16 # model_dtype[float16, bfloat16, float] for loading.
 
 ## Wandb
 wandb:
