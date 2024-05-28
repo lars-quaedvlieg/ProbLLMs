@@ -95,7 +95,6 @@ def run_experiment(hydra_config):
         lr_scheduler_type=hydra_config.lr_scheduler_type,
         warmup_steps=hydra_config.warmup_steps,
         optim=hydra_config.optimizer_type,
-        bf16=True,
         remove_unused_columns=False,
         run_name=hydra_config.wandb.name,
         gradient_checkpointing_kwargs=dict(use_reentrant=hydra_config.gradient_checkpointing_use_reentrant),
@@ -106,16 +105,6 @@ def run_experiment(hydra_config):
         r=hydra_config.lora_r,
         lora_alpha=hydra_config.lora_alpha,
         lora_dropout=hydra_config.lora_dropout,
-        target_modules=[
-            "q_proj",
-            "v_proj",
-            "k_proj",
-            "out_proj",
-            "fc_in",
-            "fc_out",
-            "wte",
-        ],
-        bias="none",
         task_type="CAUSAL_LM",
     )
 

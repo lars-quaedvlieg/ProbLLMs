@@ -8,7 +8,8 @@ from tqdm import tqdm
 DATA_PATH = "../datasets"
 PREF_FILE_NAME = "M1_preference_data_15052024.json"
 
-ADDITIONAL_DATASET_NAMES = ['camel-ai-math.jsonl', 'camel-ai-physics.jsonl', 'cs_theoryQA.jsonl']
+ADDITIONAL_DATASET_NAMES = ['camel-ai-math.jsonl', 'camel-ai-physics.jsonl', 'cs_theoryQA.jsonl',
+                            'pmp-stack-exchange-1.jsonl', 'pmp-stack-exchange-2.jsonl']
 
 TEST_SET_PROB = 0.2
 
@@ -53,11 +54,8 @@ if __name__ == '__main__':
     for dataset_name in ADDITIONAL_DATASET_NAMES:
         with jsonlines.open(os.path.join(DATA_PATH, dataset_name)) as reader:
             for preference_pair in reader:
-                # We sample uniformly random again
-                if random.random() < TEST_SET_PROB:
-                    formatted_eval_preference_data.append(preference_pair)
-                else:
-                    formatted_train_preference_data.append(preference_pair)
+                # We always want this preference data in the training set
+                formatted_train_preference_data.append(preference_pair)
 
     print('Final preference pairs:')
     print(f'\tThere are {len(formatted_train_preference_data)} preference pairs in the train dataset!')
