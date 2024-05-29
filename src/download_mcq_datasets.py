@@ -2,6 +2,9 @@ from datasets import load_dataset
 import pandas as pd
 import json
 import numpy as np
+import re
+import random
+import os
 
 
 # +
@@ -177,6 +180,82 @@ gsm8k_df = generate_synthetic_options_for_gsm8k(gsm8k_df)
 
 gsm8k_json = gsm8k_df.apply(gsm8k_row_to_dict, axis=1).tolist()
 write_jsonl(gsm8k_json, f'../datasets/gsm8k_mcqa.jsonl')
+
+
 # -
 
+# #### MATH
 
+def extract_math_answer_and_generate_options(answer_str):
+
+    # regex to find the \boxed{} with nested braces handling
+    match = re.search(r'\\boxed\{((?:[^\{\}]|\{[^\{\}]*\})*)\}', input_string)
+
+    if not match:
+        print("No \\boxed{} found in the string.")
+        return None, None
+    
+    boxed_value = match.group(1)
+    #print(f"Extracted value: {boxed_value}")
+    
+    # ensure there is a number in the extracted value
+    if not re.search(r'\d', boxed_value):
+        print("The boxed value does not contain a number.")
+        return None, None
+    
+    def generate_options(original_value):
+        options = set()
+        options.add(original_value)
+
+        # regex to find all numbers (sequences of digits) in the answer
+        numbers = re.findall(r'\d+', original_value)
+
+        while len(options) < 4:
+            selected_number = random.choice(numbers)
+            selected_number_int = int(selected_number)
+            modified_number = selected_number_int + random.choice([-5, 5])
+            modified_value = original_value.replace(selected_number, str(modified_number), 1)
+            options.add(modified_value)
+            
+        return list(options)
+    
+    options_list = generate_options(boxed_value)
+    random.shuffle(options_list) 
+
+    option_letters = ['A', 'B', 'C', 'D']
+    options_str = '\n'.join([f"{letter}. {option}" for letter, option in zip(option_letters, options_list)])
+    
+    # Determine the letter_answer
+    letter_answer = option_letters[options_list.index(boxed_value)]
+
+    return options_str, letter_answer
+
+
+
+# +
+MATH_DATASET_BASEDIR = '../MATH'
+
+for split in ['train', 'test']:
+
+    dataset_json = []
+    
+    split_dir = os.path.join(MATH_DATASET_BASEDIR, split)
+    subjects = os.listdir(split_dir)
+
+    for subject in subjects:
+        subject_dir = os.path.join(split_dir, subject)
+        q_files = [os.path.join(subject_dir, f) for f in os.listdir(subject_dir) if f.endswith('.json')]
+
+        for q_file in q_files:
+            with open(q_file) as f:
+                q = json.load(f)
+
+            options_str, letter_answer = extract_math_answer_and_generate_options(q['solution'])
+
+            if not options_str:
+                print(f'No numbers found in solution for {q_file}. Skipping...\n{q}')
+            
+            question_str = f"Question: {q['problem']}\n\nOptions:\n{options_str}\n\nAnswer:"
+            dataset_json.append({'subject': subject, 'question': question_str, 'answer': letter_answer})
+
+    write_jsonl(dataset_json, f'../datasets/MATH-{split}_mcqa.jsonl')
