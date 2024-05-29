@@ -2,30 +2,51 @@ from datasets import load_dataset
 import pandas as pd
 import json
 
+
+# +
+def load_all_splits(dataset):
+    
+    splits = list(dataset.keys())
+    dfs = []
+    
+    for split in splits:
+        dfs.append(pd.DataFrame(dataset[split]))
+    
+    return pd.concat(dfs, ignore_index=True)
+
+def write_jsonl(data, filepath):
+
+    with open(filepath, 'w') as f:
+        for d in data:
+            json.dump(d, f)
+            f.write('\n')
+
+
+# -
+
+# #### MMLU
+
+# +
 MMLU_SCIENCE_SUBJECTS =  [
-    'abstract_algebra', 'anatomy', 'astronomy',
-    'college_biology', 'college_chemistry', 'college_computer_science', 'college_mathematics',
-    'college_physics', 'computer_security', 'conceptual_physics', 'electrical_engineering',
+    'abstract_algebra', 'anatomy', 'astronomy',  
+    'college_biology', 'college_chemistry', 'college_computer_science', 'college_mathematics', 
+    'college_physics', 'computer_security', 'conceptual_physics', 'electrical_engineering', 
     'elementary_mathematics', 'formal_logic', 'high_school_biology',
-    'high_school_chemistry', 'high_school_computer_science', 'high_school_mathematics',
-    'high_school_physics', 'high_school_statistics',
-    'logical_fallacies', 'machine_learning', 'medical_genetics',
+    'high_school_chemistry', 'high_school_computer_science', 'high_school_mathematics', 
+    'high_school_physics', 'high_school_statistics', 
+    'logical_fallacies', 'machine_learning', 'medical_genetics', 
     'virology'
 ]
+
+MMLU_ALL = ['all']
 
 
 # +
 def load_mmlu_subject(subject):
 
+    print(f'Loading MMLU {subject}')
     dataset = load_dataset("cais/mmlu", subject)
-    splits = list(dataset.keys())
-
-    dfs = []
-    for split in splits:
-        dfs.append(pd.DataFrame(dataset[split]))
-
-    return pd.concat(dfs, ignore_index=True)
-
+    return load_all_splits(dataset)
 
 def load_mmlu_subjects_as_df(subjects):
 
@@ -54,8 +75,37 @@ mmlu_df = load_mmlu_subjects_as_df(MMLU_SCIENCE_SUBJECTS)
 # +
 mmlu_json = mmlu_df.apply(mmlu_row_to_dict, axis=1).tolist()
 
-with open('../datasets/mmlu-science-related_mcqa.jsonl', 'w') as f:
-    for d in mmlu_json:
-        json.dump(d, f)
-        f.write('\n')
+write_jsonl(mmlu_json, '../datasets/mmlu-science-related_mcqa.jsonl')
+
+
 # -
+
+# #### AI2_ARC
+
+def arc_row_to_dict(row):
+    choices = row['choices']
+    option_string = '\n'.join([f"{label}. {text}" for label, text in zip(choices['label'], choices['text'])])
+    answer_letter = row['answerKey']
+    question_str = f"Question: {row['question']}\n\nOptions:\n{option_string}\n\nAnswer:"
+    return {
+        'subject': '',
+        'question': question_str,
+        'answer': answer_letter
+    }
+
+
+# +
+ARC_LEVELS = ['ARC-Challenge', 'ARC-Easy']
+
+for level in ARC_LEVELS:
+    
+    print(f'Loading {level}')
+    dataset = load_dataset("allenai/ai2_arc", level)
+    arc_df = load_all_splits(dataset)
+
+    arc_json = arc_df.apply(arc_row_to_dict, axis=1).tolist()
+
+
+    outpath = f'../datasets/{level}_mcqa.jsonl'
+    print(f'Writing to {outpath}')
+    write_jsonl(arc_json, outpath)
