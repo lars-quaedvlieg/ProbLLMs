@@ -198,29 +198,12 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         if self.is_peft_model and self.pretrained_model.active_peft_config.peft_type == "PREFIX_TUNING":
             kwargs.pop("past_key_values")
 
-                # Prepare inputs for the model
-        inputs = {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            **kwargs
-        }
-
-        outputs = self.pretrained_model(**inputs)
-
-        hidden_states = outputs.hidden_states
-        past_key_values = outputs.past_key_values if hasattr(outputs, 'past_key_values') else None
-        logits = outputs.logits
-
-        output_dict = {
-            "hidden_states": hidden_states,
-            "past_key_values": past_key_values,
-            "logits": logits
-        }
+        output_dict = {}
 
         ###############################################################
         # TODO: Please implement your customized forward pass here
         # =============================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ###############################################################
 
         return output_dict
@@ -250,51 +233,8 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         ###############################################################
         # TODO: Please implement your customized logprob computation here
         # =============================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ###############################################################
-
-        if "chosen_logps" in batch.keys() and "rejected_logps" in batch.keys():
-                return batch["chosen_logps"], batch["rejected_logps"]
-
-        chosen_logps_list = []
-        rejected_logps_list = []
-
-        for prompt, chosen, rejected in zip(batch["prompt"], batch["chosen"], batch["rejected"]):
-
-            # Tokenize the input data using the tokenizer
-            prompt_encodings = tokenizer(prompt, return_tensors="pt")
-            chosen_encodings = tokenizer(chosen, return_tensors="pt")
-            rejected_encodings = tokenizer(rejected, return_tensors="pt")
-
-            input_ids_chosen = torch.cat([prompt_encodings["input_ids"], chosen_encodings["input_ids"][:, 1:]], dim=1)
-            input_ids_rejected = torch.cat([prompt_encodings["input_ids"], rejected_encodings["input_ids"][:, 1:]], dim=1)
-
-            attention_mask_chosen = torch.cat([prompt_encodings["attention_mask"], chosen_encodings["attention_mask"][:, 1:]], dim=1)
-            attention_mask_rejected = torch.cat([prompt_encodings["attention_mask"], rejected_encodings["attention_mask"][:, 1:]], dim=1)
-
-            # Compute logits
-            with torch.no_grad():
-                outputs_chosen = self.pretrained_model(input_ids=input_ids_chosen, attention_mask=attention_mask_chosen)
-                outputs_rejected = self.pretrained_model(input_ids=input_ids_rejected, attention_mask=attention_mask_rejected)
-
-            # Compute log probabilities
-            logits_chosen = outputs_chosen.logits
-            logits_rejected = outputs_rejected.logits
-
-            chosen_logps = F.log_softmax(logits_chosen, dim=-1)
-            rejected_logps = F.log_softmax(logits_rejected, dim=-1)
-
-            # Gather log probabilities of the chosen tokens
-            chosen_token_logps = torch.gather(chosen_logps, 2, chosen_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
-            rejected_token_logps = torch.gather(rejected_logps, 2, rejected_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
-
-            # Sum log probabilities over the sequence
-            chosen_logps_list.append(chosen_token_logps.sum(dim=1))
-            rejected_logps_list.append(rejected_token_logps.sum(dim=1))
-
-        # Stack results for the batch
-        chosen_logps = torch.stack(chosen_logps_list)
-        rejected_logps = torch.stack(rejected_logps_list)
 
         return chosen_logps, rejected_logps
 
@@ -322,25 +262,17 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             output_dict (`dict`):
                 A dictionary containing the reward scores of the chosen and rejected responses.
         """
-
-        chosen_rewards = policy_chosen_logps - reference_chosen_logps
-        rejected_rewards = policy_rejected_logps - reference_rejected_logps
-
-        # Question: Why is this given as a list? we are subtracting two tensors right?
-
         output_dict = {
-            "chosen_rewards": [chosen_rewards],
-            "rejected_rewards": [rejected_rewards]
+            "chosen_rewards": [],
+            "rejected_rewards": []
         }
-
-
 
         ########################################################################
         # TODO: Please implement the prediction step that computes the rewards
         # ======================================================================
         # You need to return one reward score for each chosen and rejected response.
         # ======================================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ########################################################################
 
         return output_dict
@@ -364,34 +296,13 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         """
         output_dict = {"preds": []}
 
-        for question in batch:
-            question_encodings = tokenizer(question["question"], return_tensors="pt")
-            choice_encodings = tokenizer(question["choices"], return_tensors="pt", padding=True, truncation=True)
-
-            prompt = ["Which choice is the right annswer? Answer with only 1 letter which is in [A,B,C,D] " for i in range(len(question["choices"]))]
-            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
-            
-            input_ids = torch.cat([question_encodings["input_ids"].repeat(len(question["choices"]), 1),choice_encodings["input_ids"],  prompt_encodings["input_ids"]], dim=1)
-            attention_mask = torch.cat([question_encodings["attention_mask"].repeat(len(question["choices"]), 1), choice_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1)
-
-            with torch.no_grad():
-                outputs = self.pretrained_model(input_ids=input_ids, attention_mask=attention_mask)
-
-            logits = outputs.logits
-            probs = F.softmax(logits, dim=-1)
-            preds = torch.argmax(probs, dim=-1)
-
-            output_dict["preds"].append(preds)
-
         ########################################################################
         # TODO: Please implement the prediction step that generates the prediction of the given MCQA question
         # ======================================================================
         # You need to return one letter prediction for each question.
         # ======================================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ########################################################################
-
-
 
         return output_dict
 
@@ -587,27 +498,8 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
         ###############################################################
         # TODO: Please implement your customized forward pass here
         # =============================================================
-        # raise NotImplementedError
-        ###############################################################\
-
-        
-        inputs = {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            **kwargs
-        }
-
-        outputs = self.pretrained_model(**inputs)
-
-        hidden_states = outputs.hidden_states
-        past_key_values = outputs.past_key_values if hasattr(outputs, 'past_key_values') else None
-        logits = outputs.logits
-
-        output_dict = {
-            "hidden_states": hidden_states,
-            "past_key_values": past_key_values,
-            "logits": logits
-        }
+        raise NotImplementedError
+        ###############################################################
 
         return ouput_dict
 
@@ -636,48 +528,8 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
         ###############################################################
         # TODO: Please implement your customized logprob computation here
         # =============================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ###############################################################
-
-        chosen_logps_list = []
-        rejected_logps_list = []
-
-        for prompt, chosen, rejected in zip(batch["prompt"], batch["chosen"], batch["rejected"]):
-
-            # Tokenize the input data using the tokenizer
-            prompt_encodings = tokenizer(prompt, return_tensors="pt")
-            chosen_encodings = tokenizer(chosen, return_tensors="pt")
-            rejected_encodings = tokenizer(rejected, return_tensors="pt")
-
-            input_ids_chosen = torch.cat([prompt_encodings["input_ids"], chosen_encodings["input_ids"][:, 1:]], dim=1)
-            input_ids_rejected = torch.cat([prompt_encodings["input_ids"], rejected_encodings["input_ids"][:, 1:]], dim=1)
-
-            attention_mask_chosen = torch.cat([prompt_encodings["attention_mask"], chosen_encodings["attention_mask"][:, 1:]], dim=1)
-            attention_mask_rejected = torch.cat([prompt_encodings["attention_mask"], rejected_encodings["attention_mask"][:, 1:]], dim=1)
-
-            # Compute logits
-            with torch.no_grad():
-                outputs_chosen = self.pretrained_model(input_ids=input_ids_chosen, attention_mask=attention_mask_chosen)
-                outputs_rejected = self.pretrained_model(input_ids=input_ids_rejected, attention_mask=attention_mask_rejected)
-
-            # Compute log probabilities
-            logits_chosen = outputs_chosen.logits
-            logits_rejected = outputs_rejected.logits
-
-            chosen_logps = F.log_softmax(logits_chosen, dim=-1)
-            rejected_logps = F.log_softmax(logits_rejected, dim=-1)
-
-            # Gather log probabilities of the chosen tokens
-            chosen_token_logps = torch.gather(chosen_logps, 2, chosen_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
-            rejected_token_logps = torch.gather(rejected_logps, 2, rejected_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
-
-            # Sum log probabilities over the sequence
-            chosen_logps_list.append(chosen_token_logps.sum(dim=1))
-            rejected_logps_list.append(rejected_token_logps.sum(dim=1))
-
-        # Stack results for the batch
-        chosen_logps = torch.stack(chosen_logps_list)
-        rejected_logps = torch.stack(rejected_logps_list)
 
         return chosen_logps, rejected_logps
 
@@ -710,20 +562,11 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
             "rejected_rewards": []
         }
 
-        chosen_rewards = policy_chosen_logps - reference_chosen_logps
-        rejected_rewards = policy_rejected_logps - reference_rejected_logps
-
-        # Question: Why is this given as a list? we are subtracting two tensors right?
-
-        for chosen_reward, rejected_reward in zip(chosen_rewards, rejected_rewards):
-            output_dict["chosen_rewards"].append(chosen_reward)
-            output_dict["rejected_rewards"].append(rejected_reward)
-
         ########################################################################
         # TODO: Please implement the dpo loss function to compute the rewards
         # You need to return one reward score for each chosen and rejected response.
         # ======================================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ########################################################################
 
         return output_dict
@@ -752,26 +595,7 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
         # ======================================================================
         # You need to return one letter prediction for each question.
         # ======================================================================
-        # raise NotImplementedError
+        raise NotImplementedError
         ########################################################################
-
-        for question in batch:
-            question_encodings = tokenizer(question["question"], return_tensors="pt")
-            choice_encodings = tokenizer(question["choices"], return_tensors="pt", padding=True, truncation=True)
-
-            prompt = ["Which choice is the right annswer? Answer with only 1 letter which is in [A,B,C,D] " for i in range(len(question["choices"]))]
-            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
-            
-            input_ids = torch.cat([question_encodings["input_ids"].repeat(len(question["choices"]), 1),choice_encodings["input_ids"],  prompt_encodings["input_ids"]], dim=1)
-            attention_mask = torch.cat([question_encodings["attention_mask"].repeat(len(question["choices"]), 1), choice_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1)
-
-            with torch.no_grad():
-                outputs = self.pretrained_model(input_ids=input_ids, attention_mask=attention_mask)
-
-            logits = outputs.logits
-            probs = F.softmax(logits, dim=-1)
-            preds = torch.argmax(probs, dim=-1)
-
-            output_dict["preds"].append(preds)
 
         return output_dict
