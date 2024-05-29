@@ -1,6 +1,7 @@
 from datasets import load_dataset
 import pandas as pd
 import json
+import numpy as np
 
 
 # +
@@ -109,3 +110,73 @@ for level in ARC_LEVELS:
     outpath = f'../datasets/{level}_mcqa.jsonl'
     print(f'Writing to {outpath}')
     write_jsonl(arc_json, outpath)
+
+
+# -
+
+# #### GSM8K
+
+# +
+def generate_random_options_from_numeric_answer(numeric_answer):
+
+    random_numbers = set()
+    random_numbers.add(numeric_answer)
+    while len(random_numbers) < 4:
+        rand_num = np.random.randint(numeric_answer - 10, numeric_answer + 11)
+        random_numbers.add(rand_num)
+        
+    options = list(random_numbers)
+    np.random.shuffle(options)
+    
+    # Create the options string
+    option_letters = ['A', 'B', 'C', 'D']
+    options_str = '\n'.join([f"{letter}. {option}" for letter, option in zip(option_letters, options)])
+    
+    # Determine the letter_answer
+    letter_answer = option_letters[options.index(numeric_answer)]
+    
+    return options_str, letter_answer
+
+
+def parse_numeric_answer_for_gsm8k(gsm8k_df):
+
+    gsm8k_df['answer'] = gsm8k_df['answer'].astype(str)
+    gsm8k_df['numeric_answer'] = gsm8k_df.apply(lambda x: str(x['answer']).split('\n#### ')[-1], axis=1)
+    gsm8k_df['numeric_answer'] = pd.to_numeric(gsm8k_df['numeric_answer'].str.replace(',', ''))
+    return gsm8k_df
+
+
+def generate_synthetic_options_for_gsm8k(gsm8k_df):
+
+    gsm8k_df[['options', 'letter_answer']] = gsm8k_df.apply(
+        lambda row: generate_random_options_from_numeric_answer(row['numeric_answer']),
+        axis=1, result_type='expand'
+    )
+    return gsm8k_df
+
+
+def gsm8k_row_to_dict(row):
+    options = row['options']
+    answer_letter = row['letter_answer']
+    question_str = f"Question: {row['question']}\n\nOptions:\n{options}\n\nAnswer:"
+    return {
+        'subject': '',
+        'question': question_str,
+        'answer': answer_letter
+    }
+
+
+# -
+
+dataset = load_dataset("gsm8k", "main")
+
+# +
+gsm8k_df = load_all_splits(dataset)
+gsm8k_df = parse_numeric_answer_for_gsm8k(gsm8k_df)
+gsm8k_df = generate_synthetic_options_for_gsm8k(gsm8k_df)
+
+gsm8k_json = gsm8k_df.apply(gsm8k_row_to_dict, axis=1).tolist()
+write_jsonl(gsm8k_json, f'../datasets/gsm8k_mcqa.jsonl')
+# -
+
+
