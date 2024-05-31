@@ -373,13 +373,13 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         # ======================================================================
         # raise NotImplementedError
         ########################################################################
-        for question in batch:
+        for question in batch["question"]:
 
-            question_encodings = tokenizer(question["question"], return_tensors="pt")
-            choice_list = ",".join(question["answer"])
+            question_encodings = tokenizer(question, return_tensors="pt")
 
             # Construct the prompt
-            prompt = f"Which choice is the right answer? Answer with only 1 letter which is in [{choice_list}]. Provide your answer in the format \\boxed{{letter}}."
+            prompt = f"Answer with only 1 letter which is in [A,B,C,D]. Provide your answer in the format \\boxed{{letter}}."
+            prompt = f"Answer the question"
 
             # Tokenize the prompt
             prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
@@ -390,7 +390,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
             with torch.no_grad():
                 # Generate the response
-                outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_length=512)
+                outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=20)
 
             # Decode the generated output to text
             generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -399,6 +399,8 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
             match = re.search(r'\\boxed\{(\w)\}', generated_text)
             match2 = re.search(r'\boxed\{(\w)\}', generated_text)
+
+            print(generated_text)
 
             if match:
                 answer = match.group(1)
@@ -409,7 +411,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
             output_dict["preds"].append(answer)
 
-        return output_dict
+        return output_dict, generated_text
 
 class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
     r"""
