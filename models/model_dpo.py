@@ -47,6 +47,9 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
         if not any(hasattr(self.pretrained_model, attribute) for attribute in self.lm_head_namings):
             raise ValueError("The model does not have a language model head, please use a model that has one.")
+        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.pretrained_model = self.pretrained_model.to(self.device)
 
         ###########################################################################################
         # TODO (Optional): Please uncomment the following lines to initialize your custom module
@@ -255,50 +258,46 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         # =============================================================
         # raise NotImplementedError
         ###############################################################
+
         if "chosen_logps" in batch.keys() and "rejected_logps" in batch.keys():
-                return batch["chosen_logps"], batch["rejected_logps"]
+            return batch["chosen_logps"], batch["rejected_logps"]
 
-        chosen_logps_list = []
-        rejected_logps_list = []
+        prompts = batch["prompt"]
+        chosens = batch["chosen"]
+        rejecteds = batch["rejected"]
 
-        for prompt, chosen, rejected in zip(batch["prompt"], batch["chosen"], batch["rejected"]):
+        # Tokenize the input data
+        prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
+        chosen_encodings = tokenizer(chosens, return_tensors="pt", padding=True, truncation=True)
+        rejected_encodings = tokenizer(rejecteds, return_tensors="pt", padding=True, truncation=True)
 
-            # Tokenize the input data using the tokenizer
-            prompt_encodings = tokenizer(prompt, return_tensors="pt")
-            chosen_encodings = tokenizer(chosen, return_tensors="pt")
-            rejected_encodings = tokenizer(rejected, return_tensors="pt")
+        input_ids_chosen = torch.cat([prompt_encodings["input_ids"], chosen_encodings["input_ids"][:, 1:]], dim=1).to(self.device)
+        input_ids_rejected = torch.cat([prompt_encodings["input_ids"], rejected_encodings["input_ids"][:, 1:]], dim=1).to(self.device)
 
-            input_ids_chosen = torch.cat([prompt_encodings["input_ids"], chosen_encodings["input_ids"][:, 1:]], dim=1)
-            input_ids_rejected = torch.cat([prompt_encodings["input_ids"], rejected_encodings["input_ids"][:, 1:]], dim=1)
+        attention_mask_chosen = torch.cat([prompt_encodings["attention_mask"], chosen_encodings["attention_mask"][:, 1:]], dim=1).to(self.device)
+        attention_mask_rejected = torch.cat([prompt_encodings["attention_mask"], rejected_encodings["attention_mask"][:, 1:]], dim=1).to(self.device)
 
-            attention_mask_chosen = torch.cat([prompt_encodings["attention_mask"], chosen_encodings["attention_mask"][:, 1:]], dim=1)
-            attention_mask_rejected = torch.cat([prompt_encodings["attention_mask"], rejected_encodings["attention_mask"][:, 1:]], dim=1)
-
+        with torch.no_grad():
             # Compute logits
-            with torch.no_grad():
-                outputs_chosen = self.pretrained_model(input_ids=input_ids_chosen, attention_mask=attention_mask_chosen)
-                outputs_rejected = self.pretrained_model(input_ids=input_ids_rejected, attention_mask=attention_mask_rejected)
+            outputs_chosen = self.pretrained_model(input_ids=input_ids_chosen, attention_mask=attention_mask_chosen,)
+            outputs_rejected = self.pretrained_model(input_ids=input_ids_rejected, attention_mask=attention_mask_rejected)
 
-            # Compute log probabilities
-            logits_chosen = outputs_chosen.logits
-            logits_rejected = outputs_rejected.logits
+        # Compute log probabilities
+        logits_chosen = outputs_chosen.logits
+        logits_rejected = outputs_rejected.logits
 
-            chosen_logps = F.log_softmax(logits_chosen, dim=-1)
-            rejected_logps = F.log_softmax(logits_rejected, dim=-1)
+        chosen_logps = F.log_softmax(logits_chosen, dim=-1)
+        rejected_logps = F.log_softmax(logits_rejected, dim=-1)
 
-            # Gather log probabilities of the chosen tokens
-            chosen_token_logps = torch.gather(chosen_logps, 2, chosen_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
-            rejected_token_logps = torch.gather(rejected_logps, 2, rejected_encodings["input_ids"].unsqueeze(-1)).squeeze(-1)
+        # Gather log probabilities of the chosen and rejected tokens
+        chosen_token_logps = torch.gather(chosen_logps, 2, chosen_encodings["input_ids"].unsqueeze(-1).to(self.device)).squeeze(-1)
+        rejected_token_logps = torch.gather(rejected_logps, 2, rejected_encodings["input_ids"].unsqueeze(-1).to(self.device)).squeeze(-1)
 
-            # Sum log probabilities over the sequence
-            chosen_logps_list.append(chosen_token_logps.sum(dim=1))
-            rejected_logps_list.append(rejected_token_logps.sum(dim=1))
+        # Sum log probabilities over the sequence
+        chosen_logps_list = chosen_token_logps.sum(dim=1)
+        rejected_logps_list = rejected_token_logps.sum(dim=1)
 
-        # Stack results for the batch
-        chosen_logps = torch.stack(chosen_logps_list)
-        rejected_logps = torch.stack(rejected_logps_list)
-
-        return chosen_logps, rejected_logps
+        return chosen_logps_list, rejected_logps_list
 
 
     def prediction_step_reward(
@@ -373,34 +372,31 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         # ======================================================================
         # raise NotImplementedError
         ########################################################################
-        for question in batch["question"]:
 
-            question_encodings = tokenizer(question, return_tensors="pt")
+        output_dict = {"preds": []}
 
-            # Construct the prompt
-            prompt = f"Answer with only 1 letter which is in [A,B,C,D]. Provide your answer in the format \\boxed{{letter}}."
-            prompt = f"Answer the question"
+        questions = batch["question"]
+        prompts = [f"Answer with only 1 letter which is in [A,B,C,D]. Provide your answer in the format \\boxed{{letter}}." for _ in questions]
 
-            # Tokenize the prompt
-            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+        # Tokenize the questions and prompts
+        question_encodings = tokenizer(questions, return_tensors="pt", padding=True, truncation=True)
+        prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
 
-            # Concatenate inputs
-            input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1)
-            attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1)
+        # Concatenate inputs
+        input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1).to("cuda")
+        attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1).to("cuda")
 
-            with torch.no_grad():
-                # Generate the response
-                outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=20)
+        with torch.no_grad():
+            # Generate the response
+            outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=512)
 
-            # Decode the generated output to text
-            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Decode the generated output to text
+        generated_texts = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
 
+        for generated_text in generated_texts:
             # Extract the answer inside the \boxed{}
-
             match = re.search(r'\\boxed\{(\w)\}', generated_text)
             match2 = re.search(r'\boxed\{(\w)\}', generated_text)
-
-            print(generated_text)
 
             if match:
                 answer = match.group(1)
@@ -411,7 +407,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
             output_dict["preds"].append(answer)
 
-        return output_dict, generated_text
+        return output_dict
 
 class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
     r"""
@@ -782,8 +778,8 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
             prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
 
             # Concatenate inputs
-            input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1)
-            attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1)
+            input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1).to(self.device)
+            attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1).to(self.device)
 
             with torch.no_grad():
                 # Generate the response
