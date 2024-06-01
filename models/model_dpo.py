@@ -204,12 +204,6 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
         output_dict = {}
 
-        ###############################################################
-        # TODO: Please implement your customized forward pass here
-        # =============================================================
-        # raise NotImplementedError
-        ###############################################################
-
         # Prepare inputs for the model
         inputs = {
             "input_ids": input_ids,
@@ -253,14 +247,6 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             rejected_logps (`torch.FloatTensor`):
                 Log probabilities of the rejected responses. Shape: (batch_size,)
         """
-        ###############################################################
-        # TODO: Please implement your customized logprob computation here
-        # =============================================================
-        # raise NotImplementedError
-        ###############################################################
-
-        if "chosen_logps" in batch.keys() and "rejected_logps" in batch.keys():
-            return batch["chosen_logps"], batch["rejected_logps"]
 
         prompts = batch["prompt"]
         chosens = batch["chosen"]
@@ -339,15 +325,6 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         output_dict["chosen_rewards"] = chosen_rewards.tolist()
         output_dict["rejected_rewards"] = rejected_rewards.tolist()
 
-
-        ########################################################################
-        # TODO: Please implement the prediction step that computes the rewards
-        # ======================================================================
-        # You need to return one reward score for each chosen and rejected response.
-        # ======================================================================
-        # raise NotImplementedError
-        ########################################################################
-
         return output_dict
 
     def prediction_step_mcqa(self, batch, tokenizer):
@@ -366,16 +343,6 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         Returns:
             output_dict (`dict`): A dictionary containing the model predictions given input questions.
         """
-        output_dict = {"preds": []}
-
-        ########################################################################
-        # TODO: Please implement the prediction step that generates the prediction of the given MCQA question
-        # ======================================================================
-        # You need to return one letter prediction for each question.
-        # ======================================================================
-        # raise NotImplementedError
-        ########################################################################
-
         output_dict = {"preds": []}
 
         questions = batch["question"]
@@ -406,7 +373,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             elif match2:
                 answer = match2.group(1)
             else:
-                answer = "N/A"  # Default to N/A if no answer is found
+                answer = "A"  # Default to N/A if no answer is found
 
             output_dict["preds"].append(answer)
 
