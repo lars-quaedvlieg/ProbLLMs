@@ -266,16 +266,19 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         chosens = batch["chosen"]
         rejecteds = batch["rejected"]
 
+        # Concatenate the prompt and the responses
+        chosen_seq = [f"{prompt} \n\nAnswer: {chosen}" for prompt, chosen in zip(prompts, chosens)]
+        rejected_seq = [f"{prompt} \n\nAnswer: {rejected}" for prompt, rejected in zip(prompts, rejecteds)]
+
         # Tokenize the input data
-        prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
-        chosen_encodings = tokenizer(chosens, return_tensors="pt", padding=True, truncation=True)
-        rejected_encodings = tokenizer(rejecteds, return_tensors="pt", padding=True, truncation=True)
+        chosen_encodings = tokenizer(chosen_seq, return_tensors="pt", padding=True, truncation=True)
+        rejected_encodings = tokenizer(rejected_seq, return_tensors="pt", padding=True, truncation=True)
 
-        input_ids_chosen = torch.cat([prompt_encodings["input_ids"], chosen_encodings["input_ids"][:, 1:]], dim=1).to(self.device)
-        input_ids_rejected = torch.cat([prompt_encodings["input_ids"], rejected_encodings["input_ids"][:, 1:]], dim=1).to(self.device)
+        input_ids_chosen = chosen_encodings["input_ids"].to(self.device)
+        input_ids_rejected = rejected_encodings["input_ids"].to(self.device)
 
-        attention_mask_chosen = torch.cat([prompt_encodings["attention_mask"], chosen_encodings["attention_mask"][:, 1:]], dim=1).to(self.device)
-        attention_mask_rejected = torch.cat([prompt_encodings["attention_mask"], rejected_encodings["attention_mask"][:, 1:]], dim=1).to(self.device)
+        attention_mask_chosen = chosen_encodings["attention_mask"].to(self.device)
+        attention_mask_rejected = rejected_encodings["attention_mask"].to(self.device)
 
         with torch.no_grad():
             # Compute logits
@@ -383,8 +386,8 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
 
         # Concatenate inputs
-        input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1).to("cuda")
-        attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1).to("cuda")
+        input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1).to(self.device)
+        attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1).to(self.device)
 
         with torch.no_grad():
             # Generate the response
@@ -596,7 +599,7 @@ class AutoDPOModelForSeq2SeqLM(PreTrainedModelWrapper):
         if self.is_peft_model and self.pretrained_model.active_peft_config.peft_type == "PREFIX_TUNING":
             kwargs.pop("past_key_values")
 
-        ouput_dict = {}
+        # ouput_dict = {}
 
         ###############################################################
         # TODO: Please implement your customized forward pass here

@@ -36,9 +36,9 @@ def test_predictions():
     # Wrap the model with AutoDPOModelForCausalLM
     dpo_model = AutoDPOModelForCausalLM(pretrained_model=model)
 
-    n_samples = 2
+    n_samples = 4
 
-    batch = load_jsonl("./datasets/dpo_preference_eval_student_only.jsonl")[:n_samples]
+    batch = load_jsonl("./datasets/dpo_preference_train.jsonl")[:n_samples]
 
     print(batch)
     
