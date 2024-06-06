@@ -65,6 +65,23 @@ def run_experiment(hydra_config):
         lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
                   and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
     )
+
+    # Add chat template
+    message_fn = lambda message_str: [
+        {
+            "role": "user",
+            "content": message_str,
+        }
+    ]
+    def add_chat_template(sample):
+        template_fn = lambda x: tokenizer.apply_chat_template(message_fn(x), tokenize=False) + tokenizer.eos_token
+        sample["prompt"] = template_fn(sample["prompt"])
+        sample["rejected"] = template_fn(sample["rejected"])
+        sample["chosen"] = template_fn(sample["chosen"])
+        return sample
+
+    train_dataset = train_dataset.map(add_chat_template)
+
     print(f'Kept {round(len(train_dataset) / initial_len, 2)*100:<.2f}% of the training data')
 
     # Load the evaluation dataset
@@ -75,6 +92,8 @@ def run_experiment(hydra_config):
         lambda x: len(x["prompt"]) + len(x["chosen"]) <= hydra_config.max_length
                   and len(x["prompt"]) + len(x["rejected"]) <= hydra_config.max_length
     )
+
+    eval_dataset = eval_dataset.map(add_chat_template)
     print(f'Kept {round(len(eval_dataset) / initial_len, 2)*100:<.2f}% of the evaluation data')
 
     # initialize training arguments:

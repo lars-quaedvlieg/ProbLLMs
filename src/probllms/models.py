@@ -11,30 +11,28 @@ class Models(Enum):
     Llama3_8B = "meta-llama/Meta-Llama-3-8B"
     Llama3_70B = "meta-llama/Meta-Llama-3-70B"
     GPT2 = "openai-community/gpt2"
+    Phi3 = "microsoft/Phi-3-mini-4k-instruct"
 
     def load_model_and_tokenizer(self, cache_dir: str, model_config: dict[str, Any]):
         model_name = self.value
+        # add_eos_token=True is very important here, since we do fine-tuning
         tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
         model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir)
         model.generation_config = GenerationConfig.from_pretrained(model_name)
 
-        # Some settings
-        model.config.use_cache = False
-        model.generation_config.pad_token_id = model.generation_config.eos_token_id
-        tokenizer.pad_token = tokenizer.eos_token
+        if tokenizer.pad_token is None or tokenizer.pad_token == tokenizer.eos_token:
+            print('Added custom padding token')
+            tokenizer.add_special_tokens({"pad_token": "<<|[PAD]|>>"})
+            model.resize_token_embeddings(len(tokenizer))
 
         return model, tokenizer
 
     def load_peft_model_and_tokenizer(self, model_tokenizer_path: str, cache_dir: str, model_config: dict[str, Any]):
         model_name = self.value
         tokenizer = AutoTokenizer.from_pretrained(model_tokenizer_path, cache_dir=cache_dir)
+
         model = AutoPeftModelForCausalLM.from_pretrained(model_tokenizer_path, **model_config, cache_dir=cache_dir)
         model.generation_config = GenerationConfig.from_pretrained(model_name)
-
-        # Some settings
-        model.config.use_cache = False
-        model.generation_config.pad_token_id = model.generation_config.eos_token_id
-        tokenizer.pad_token = tokenizer.eos_token
 
         return model, tokenizer
 
