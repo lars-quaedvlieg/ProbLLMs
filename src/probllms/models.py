@@ -3,8 +3,7 @@ from typing import Any
 
 import torch
 from peft import AutoPeftModelForCausalLM
-from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
-
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, BitsAndBytesConfig 
 
 class Models(Enum):
     DeepSeekMath_7B = "deepseek-ai/deepseek-math-7b-rl"
@@ -13,12 +12,21 @@ class Models(Enum):
     GPT2 = "openai-community/gpt2"
     Phi3 = "microsoft/Phi-3-mini-4k-instruct"
 
-    def load_model_and_tokenizer(self, cache_dir: str, model_config: dict[str, Any]):
+    def load_model_and_tokenizer(self, cache_dir: str, model_config: dict[str, Any], quantize: bool = False):
         model_name = self.value
         # add_eos_token=True is very important here, since we do fine-tuning
         tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
-        model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir)
-        model.generation_config = GenerationConfig.from_pretrained(model_name)
+
+        if quantize:
+            # Quantization config for 8 bit
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit = True,
+            )
+            model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir, quantization_config=quantization_config)
+            model.generation_config = GenerationConfig.from_pretrained(model_name)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(model_name, **model_config, cache_dir=cache_dir)
+            model.generation_config = GenerationConfig.from_pretrained(model_name)
 
         if tokenizer.pad_token is None or tokenizer.pad_token == tokenizer.eos_token:
             print('Added custom padding token')
