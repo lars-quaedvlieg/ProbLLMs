@@ -126,6 +126,7 @@ def run_experiment(hydra_config):
         lora_alpha=hydra_config.lora_alpha,
         lora_dropout=hydra_config.lora_dropout,
         task_type="CAUSAL_LM",
+        target_modules="all-linear",
     )
 
     print_trainable_parameters(model)

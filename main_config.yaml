@@ -8,7 +8,6 @@
 "test_data_path": "./datasets/dpo_preference_eval.jsonl" # Your path to the test data
 "dpo_model_args": null # Put any model arguments required to load your DPO model below
 "rag_model_args": # Put any model arguments required to load your rag model below
-  "encoder_model_path": "facebook/bart-large"
-  "retriever_model_path": "./checkpoints/rag_retriever"
-  "document_dir": "./data/documents"
+  "encoder_model_path": "BAAI/bge-large-en"
+  "document_dir": "./data/documents/index"
 "quantized_model_args": null # Put any model arguments required to load your quantized model below

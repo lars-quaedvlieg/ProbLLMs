@@ -3,3 +3,5 @@ tqdm
 wandb
 pre-commit
 black
+llama-index
+llama-index-embeddings-huggingface

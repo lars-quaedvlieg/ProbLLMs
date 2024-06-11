@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import re
 
+from llama_index.core import Settings, StorageContext, load_index_from_storage
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM
 from models.model_base import PreTrainedModelWrapper
 
@@ -44,6 +46,17 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
                 Additional keyword arguments, that are passed to any `CustomModule` class.
         """
         super().__init__(pretrained_model, **kwargs)
+
+        if "encoder_model_path" in kwargs.keys():
+            self.rag = True
+
+            self.embed_model = HuggingFaceEmbedding(model_name=kwargs["encoder_model_path"])
+            Settings.embed_model = self.embed_model
+
+            storage_context = StorageContext.from_defaults(persist_dir=kwargs["document_dir"])
+            index = load_index_from_storage(storage_context)
+
+            self.retriever = index.as_retriever()
 
         if not any(hasattr(self.pretrained_model, attribute) for attribute in self.lm_head_namings):
             raise ValueError("The model does not have a language model head, please use a model that has one.")
@@ -346,36 +359,48 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         output_dict = {"preds": []}
 
         questions = batch["question"]
-        prompts = [f"Answer with only 1 letter which is in [A,B,C,D]. Provide your answer in the format \\boxed{{letter}}." for _ in questions]
+        prompts = [f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards.\n{q}" for q in questions]
+
+        if self.rag:
+            Settings.embed_model = self.embed_model
+            for question in batch["questions"]:
+                responses = self.retriever.retrieve(question)
+                # TODO: Add template
 
         # Tokenize the questions and prompts
-        question_encodings = tokenizer(questions, return_tensors="pt", padding=True, truncation=True)
         prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
 
         # Concatenate inputs
-        input_ids = torch.cat([question_encodings["input_ids"], prompt_encodings["input_ids"]], dim=1).to(self.device)
-        attention_mask = torch.cat([question_encodings["attention_mask"], prompt_encodings["attention_mask"]], dim=1).to(self.device)
+        input_ids = prompt_encodings["input_ids"].to(self.device)
+        attention_mask = prompt_encodings["attention_mask"].to(self.device)
 
         with torch.no_grad():
             # Generate the response
-            outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=512)
+            outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=10)
 
         # Decode the generated output to text
-        generated_texts = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+        generated_texts = [tokenizer.decode(output[-10:], skip_special_tokens=True) for output in outputs]
 
         for generated_text in generated_texts:
             # Extract the answer inside the \boxed{}
-            match = re.search(r'\\boxed\{(\w)\}', generated_text)
-            match2 = re.search(r'\boxed\{(\w)\}', generated_text)
+            #print('###', generated_text, '###')
+            answers = [word.strip().upper() for word in generated_text.split()]
+            final_ans = "C" # Default to N/A if no answer is found
+            for answer in answers:
+                if len(answer) > 2:
+                    continue
 
-            if match:
-                answer = match.group(1)
-            elif match2:
-                answer = match2.group(1)
+                if len(answer) == 2 and answer[1].isalpha():
+                    continue
+
+                if answer[0] in ['A', 'B', 'C', 'D']:
+                    final_ans = answer[0]
+                    break
             else:
-                answer = "A"  # Default to N/A if no answer is found
+                print(answers)
+            print(final_ans, end='\r')
 
-            output_dict["preds"].append(answer)
+            output_dict["preds"].append(final_ans)
 
         return output_dict
 
