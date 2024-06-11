@@ -55,8 +55,10 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
             storage_context = StorageContext.from_defaults(persist_dir=kwargs["document_dir"])
             index = load_index_from_storage(storage_context)
+            
+            self.similarity_top_k = kwargs.get("similarity_top_k", 2)
 
-            self.retriever = index.as_retriever()
+            self.retriever = index.as_retriever(similarity_top_k=self.similarity_top_k)
 
         if not any(hasattr(self.pretrained_model, attribute) for attribute in self.lm_head_namings):
             raise ValueError("The model does not have a language model head, please use a model that has one.")
@@ -359,13 +361,16 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         output_dict = {"preds": []}
 
         questions = batch["question"]
-        prompts = [f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards.\n{q}" for q in questions]
-
+        prompts = []
         if self.rag:
             Settings.embed_model = self.embed_model
-            for question in batch["questions"]:
+            for question in questions:
                 responses = self.retriever.retrieve(question)
-                # TODO: Add template
+                context = f"\n{'#' * 50}\n\n".join([f"Contextual knowledge {i}: {response.text}" for i, response in enumerate(responses, 1)])
+                
+                prompts.append(f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards. You can use the contextual knowledge we provide to help you answer the question.\n{context}\n{question}")
+        else:
+            prompts = [f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards.\n{q}" for q in questions]
 
         # Tokenize the questions and prompts
         prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)

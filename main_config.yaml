@@ -10,4 +10,5 @@
 "rag_model_args": # Put any model arguments required to load your rag model below
   "encoder_model_path": "BAAI/bge-large-en"
   "document_dir": "./data/documents/index"
+  "similarity_top_k": 3
 "quantized_model_args": null # Put any model arguments required to load your quantized model below
