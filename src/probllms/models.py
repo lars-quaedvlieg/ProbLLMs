@@ -39,7 +39,7 @@ class Models(Enum):
         model_name = self.value
         tokenizer = AutoTokenizer.from_pretrained(model_tokenizer_path, cache_dir=cache_dir)
 
-        model = AutoPeftModelForCausalLM.from_pretrained(model_tokenizer_path, **model_config, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_tokenizer_path, **model_config, cache_dir=cache_dir)
         model.generation_config = GenerationConfig.from_pretrained(model_name)
 
         return model, tokenizer
