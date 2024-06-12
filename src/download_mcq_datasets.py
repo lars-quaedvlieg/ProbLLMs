@@ -42,6 +42,13 @@ MMLU_SCIENCE_SUBJECTS =  [
     'virology'
 ]
 
+MMLU_SCIENCE_SUBJECTS =  [
+    'abstract_algebra', 'astronomy', 'college_computer_science', 'college_mathematics', 
+    'college_physics', 'computer_security', 'conceptual_physics', 'electrical_engineering', 
+    'elementary_mathematics', 'formal_logic', 'high_school_computer_science', 'high_school_mathematics', 
+    'high_school_physics', 'high_school_statistics', 'machine_learning'
+]
+
 MMLU_ALL = ['all']
 
 
@@ -189,7 +196,7 @@ write_jsonl(gsm8k_json, f'../datasets/gsm8k_mcqa.jsonl')
 def extract_math_answer_and_generate_options(answer_str):
 
     # regex to find the \boxed{} with nested braces handling
-    match = re.search(r'\\boxed\{((?:[^\{\}]|\{[^\{\}]*\})*)\}', input_string)
+    match = re.search(r'\\boxed\{((?:[^\{\}]|\{[^\{\}]*\})*)\}', answer_str)
 
     if not match:
         print("No \\boxed{} found in the string.")
@@ -237,6 +244,8 @@ MATH_DATASET_BASEDIR = '../MATH'
 
 for split in ['train', 'test']:
 
+    print(split)
+
     dataset_json = []
     
     split_dir = os.path.join(MATH_DATASET_BASEDIR, split)
@@ -245,6 +254,7 @@ for split in ['train', 'test']:
     for subject in subjects:
         subject_dir = os.path.join(split_dir, subject)
         q_files = [os.path.join(subject_dir, f) for f in os.listdir(subject_dir) if f.endswith('.json')]
+        print(f"{len(q_files)} questions found for {subject}")
 
         for q_file in q_files:
             with open(q_file) as f:
@@ -258,4 +268,8 @@ for split in ['train', 'test']:
             question_str = f"Question: {q['problem']}\n\nOptions:\n{options_str}\n\nAnswer:"
             dataset_json.append({'subject': subject, 'question': question_str, 'answer': letter_answer})
 
+    print(f"Found a total of {len(dataset_json)} questions for {split} split")
     write_jsonl(dataset_json, f'../datasets/MATH-{split}_mcqa.jsonl')
+# -
+
+
