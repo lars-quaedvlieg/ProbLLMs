@@ -358,6 +358,8 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         Returns:
             output_dict (`dict`): A dictionary containing the model predictions given input questions.
         """
+        tokenizer.pad_token = tokenizer.eos_token
+
         output_dict = {"preds": []}
 
         questions = batch["question"]
@@ -366,11 +368,15 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             Settings.embed_model = self.embed_model
             for question in questions:
                 responses = self.retriever.retrieve(question)
-                context = f"\n{'#' * 50}\n\n".join([f"Contextual knowledge {i}: {response.text}" for i, response in enumerate(responses, 1)])
-                
-                prompts.append(f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards. You can use the contextual knowledge we provide to help you answer the question.\n{context}\n{question}")
+                context = f"\n{'#' * 50}\n\n".join(
+                    [f"Contextual knowledge {i}: {response.text}" for i, response in enumerate(responses, 1)])
+
+                prompts.append(
+                    f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards. You can use the contextual knowledge we provide to help you answer the question.\n{context}\n{question}")
         else:
-            prompts = [f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards.\n{q}" for q in questions]
+            prompts = [
+                f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning after.\n\n{q}"
+                for q in questions]
 
         # Tokenize the questions and prompts
         prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
@@ -381,11 +387,21 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
         with torch.no_grad():
             # Generate the response
-            outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=10)
+            outputs = self.pretrained_model.generate(input_ids=input_ids, attention_mask=attention_mask, max_new_tokens=1, return_dict_in_generate=True, output_logits=True)
+
+        #print(outputs.logits[0], outputs.logits[0].shape)
+        #print(tokenizer(['A', 'B', 'C', 'D']))
 
         # Decode the generated output to text
-        generated_texts = [tokenizer.decode(output[-10:], skip_special_tokens=True) for output in outputs]
+        #generated_texts = [tokenizer.decode(output[-10:], skip_special_tokens=True) for output in outputs]
+        id_to_char = ['A', 'B', 'C', 'D']
+        answer_ids = tokenizer(id_to_char, add_special_tokens=False)
+        generated_texts = [id_to_char[i] for i in torch.argmax(outputs.logits[0][:, answer_ids], dim=-1)]
 
+        # Non-mcqa
+        #generated_texts = [tokenizer.decode(output[-10:], skip_special_tokens=True) for output in outputs]
+
+        #print(res, outputs.logits[0][:, answer_ids])
         for generated_text in generated_texts:
             # Extract the answer inside the \boxed{}
             #print('###', generated_text, '###')
