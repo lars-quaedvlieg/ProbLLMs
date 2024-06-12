@@ -6,10 +6,13 @@ cache_dir: ${project_dir}/cached_models # Where to store the models
 seed: 0 # random seed that will be set at the beginning of training.
 
 ## Model parameters
-model_name_or_path: DeepSeekMath_7B # the location of the model name or path (MUST be supported)
-peft_model_path: ${project_dir}/out/
+model_name_or_path: Phi3 # the location of the model name or path (MUST be supported)
+peft_model_path: ${project_dir}/out/dpo_lora_finetune-2024-06-11-18-28-53
 
-load_in_4bit: false # whether to load the model in 4bit
+load_in_4bit: true # whether to load the model in 4bit
 model_dtype: bfloat16 # model_dtype[float16, bfloat16, float] for loading.
 
-max_generation_length: 1024 # the maximum response length
+max_generation_length: 32 # the maximum response length
+
+# In case of pushing to huggingface
+huggingface_name: ProbLLM-DPO-mini-4bit

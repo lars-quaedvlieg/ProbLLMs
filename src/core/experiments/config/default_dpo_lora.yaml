@@ -11,8 +11,8 @@ eval_data_path: ${project_dir}/datasets/dpo_preference_eval.jsonl  # the directo
 beta: 0.05 # the beta parameter for DPO loss
 
 ## Training parameters
-model_name_or_path: DeepSeekMath_7B # the location of the model name or path (MUST be supported)
-learning_rate: 5e-4 # optimizer learning rate
+model_name_or_path: Phi3 # the location of the model name or path (MUST be supported)
+learning_rate: 5e-5 # optimizer learning rate
 lr_scheduler_type: cosine # the lr scheduler type
 warmup_steps: 100 # the number of warmup steps
 weight_decay: 0.05 # the weight decay

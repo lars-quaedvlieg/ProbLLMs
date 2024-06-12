@@ -1,12 +1,34 @@
+import re
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import re
-
 from llama_index.core import Settings, StorageContext, load_index_from_storage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM
+
 from models.model_base import PreTrainedModelWrapper
+
+
+class CustomHuggingFaceEmbedding(HuggingFaceEmbedding):
+    def init(self, model_name):
+        super().init(model_name)
+        self.model_name = model_name
+
+    def _embed(
+            self,
+            sentences,
+            prompt_name,
+    ):
+        """Embed sentences."""
+        return self._model.encode(
+            sentences,
+            batch_size=self.embed_batch_size,
+            prompt_name=prompt_name,
+            normalize_embeddings=self.normalize,
+            show_progress_bar=False
+        ).tolist()
+
 
 class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
     """
@@ -74,7 +96,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         self.is_rag = True
         self.rag_args = rag_args
 
-        self.embed_model = HuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"])
+        self.embed_model = CustomHuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"], trust_remote_code=True)
         Settings.embed_model = self.embed_model
 
         print('Loading storage context...')
@@ -388,6 +410,9 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             prompts = [
                 f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning after.\n\n{q}"
                 for q in questions]
+
+        #for prompt in prompts:
+        #    print(10*'#' + '\n', prompt)
 
         # Tokenize the questions and prompts
         prompt_encodings = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)

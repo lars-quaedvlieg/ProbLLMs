@@ -129,7 +129,6 @@ class PreTrainedModelWrapper(nn.Module):
                 also support `prepare_model_for_kbit_training` arguments from
                 `peft` library.
         """
-        print(kwargs)
         if kwargs is not None:
             is_rag = kwargs.pop("is_rag", False)
             rag_args = kwargs.pop("rag_args", {}) if is_rag else {}

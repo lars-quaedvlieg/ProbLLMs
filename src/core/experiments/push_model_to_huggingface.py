@@ -36,6 +36,7 @@ def run_experiment(hydra_config):
     )
 
     model.push_to_hub(f"ProbLLMs/{hydra_config.huggingface_name}")
+    tokenizer.push_to_hub(f"ProbLLMs/{hydra_config.huggingface_name}")
 
 if __name__ == "__main__":
     run_experiment()
