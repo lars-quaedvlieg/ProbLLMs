@@ -340,8 +340,8 @@ class PreTrainedModelWrapper(nn.Module):
         model.is_peft_model = is_peft_model
         model.current_device = current_device
 
-        model.is_rag = is_rag
-        model.rag_args
+        if is_rag:
+            model.init_rag(rag_args)
 
         if is_resuming_training:
             model.post_init(state_dict=state_dict)

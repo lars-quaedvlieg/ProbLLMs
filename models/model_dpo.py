@@ -51,19 +51,6 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         self.is_rag = False
         self.rag_args = {}
 
-        if self.is_rag:
-            print(self.is_rag, self.rag_args)
-            self.embed_model = HuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"])
-            Settings.embed_model = self.embed_model
-
-            storage_context = StorageContext.from_defaults(persist_dir=self.rag_args["document_dir"])
-
-            print('Loading storage context...')
-            index = load_index_from_storage(storage_context)
-            self.similarity_top_k = self.rag_args.get("similarity_top_k", 2)
-
-            self.retriever = index.as_retriever(similarity_top_k=self.similarity_top_k)
-
         if not any(hasattr(self.pretrained_model, attribute) for attribute in self.lm_head_namings):
             raise ValueError("The model does not have a language model head, please use a model that has one.")
 
@@ -81,6 +68,21 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         # self.custom_module = CustomModule(self.pretrained_model.config, **custom_module_kwargs)
         # self._init_weights(**custom_module_kwargs)
         ###########################################################################################
+
+    def init_rag(self, rag_args):
+        self.is_rag = True
+        self.rag_args = rag_args
+
+        self.embed_model = HuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"])
+        Settings.embed_model = self.embed_model
+
+        storage_context = StorageContext.from_defaults(persist_dir=self.rag_args["document_dir"])
+
+        print('Loading storage context...')
+        index = load_index_from_storage(storage_context)
+        self.similarity_top_k = self.rag_args.get("similarity_top_k", 2)
+
+        self.retriever = index.as_retriever(similarity_top_k=self.similarity_top_k)
 
     def _init_weights(self, **kwargs):
         """
