@@ -70,19 +70,24 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         ###########################################################################################
 
     def init_rag(self, rag_args):
+        print('Setting up RAG...')
         self.is_rag = True
         self.rag_args = rag_args
 
         self.embed_model = HuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"])
         Settings.embed_model = self.embed_model
 
+        print('Loading storage context...')
         storage_context = StorageContext.from_defaults(persist_dir=self.rag_args["document_dir"])
 
-        print('Loading storage context...')
+        print('Loading index from storage...')
         index = load_index_from_storage(storage_context)
         self.similarity_top_k = self.rag_args.get("similarity_top_k", 2)
 
+        print('Setting index to retriever...')
         self.retriever = index.as_retriever(similarity_top_k=self.similarity_top_k)
+
+        print('RAG initialization complete!')
 
     def _init_weights(self, **kwargs):
         """
