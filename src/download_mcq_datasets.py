@@ -5,6 +5,7 @@ import numpy as np
 import re
 import random
 import os
+from tqdm import tqdm
 
 
 # +
@@ -238,7 +239,6 @@ def extract_math_answer_and_generate_options(answer_str):
     return options_str, letter_answer
 
 
-
 # +
 MATH_DATASET_BASEDIR = '../MATH'
 
@@ -270,6 +270,147 @@ for split in ['train', 'test']:
 
     print(f"Found a total of {len(dataset_json)} questions for {split} split")
     write_jsonl(dataset_json, f'../datasets/MATH-{split}_mcqa.jsonl')
+# -
+# #### TheoremQA
+
+
+# +
+def random_float_in_range(orig, perc_offset=0.1, decimal_places=3):
+    offset = random.uniform(-perc_offset * orig, perc_offset * orig)
+    if orig == 0.0:
+        offset = random.uniform(-1, 1)
+    return round(orig + offset, decimal_places)
+
+def random_int_in_range(orig, offset=5):
+    return np.random.randint(orig - 5, orig + 5)
+
+def random_num_in_range(orig):
+    if isinstance(orig, int):
+        return random_int_in_range(orig, offset=5)
+    else:
+        return random_float_in_range(orig, perc_offset=0.1, decimal_places=3)
+
+
+def generate_random_options_from_numeric_answer(numeric_answer):
+
+    random_numbers = set()
+    random_numbers.add(numeric_answer)
+    counter = 0
+    while len(random_numbers) < 4:
+        rand_num = random_num_in_range(numeric_answer)
+        random_numbers.add(rand_num)
+        counter += 1
+        if counter > 25:
+            return None, None
+        
+    options = list(random_numbers)
+    np.random.shuffle(options)
+
+    # Create the options string
+    option_letters = ['A', 'B', 'C', 'D']
+    options_str = '\n'.join([f"{letter}. {option}" for letter, option in zip(option_letters, options)])
+    
+    # Determine the letter_answer
+    letter_answer = option_letters[options.index(numeric_answer)]
+    
+    return options_str, letter_answer
+
+
+def generate_random_options_for_list_answers(answer_list):
+
+    def generate_options(original_list):
+        options = set()
+        options.add(tuple(original_list))
+
+        counter = 0
+    
+        while len(options) < 4:
+            selected_index = random.randint(0,len(original_list)-1)
+            selected_number = original_list[selected_index]
+            modified_number = random_num_in_range(selected_number)
+            modified_list = original_list.copy()
+            modified_list[selected_index] = modified_number
+            options.add(tuple(modified_list))
+
+            counter += 1
+            if counter > 25:
+                return None
+            
+        options = list(options)
+        return [list(o) for o in options]
+
+    
+    options_list = generate_options(answer_list)
+    if options_list is None:
+        return None, None
+        
+    random.shuffle(options_list) 
+
+    option_letters = ['A', 'B', 'C', 'D']
+    options_str = '\n'.join([f"{letter}. {option}" for letter, option in zip(option_letters, options_list)])
+    
+    # Determine the letter_answer
+    letter_answer = option_letters[options_list.index(answer_list)]
+
+    return options_str, letter_answer
+    
+
+# +
+THEOREMQA_DATASET = '../theoremqa_test.json'
+
+print('Loading TheoremQA dataset...')
+with open(THEOREMQA_DATASET) as f:
+    dataset = json.load(f)
+
+# +
+# filter out finance questions
+
+print(f"{len(dataset)} questions including finance qs")
+dataset = [q for q in dataset if q['field']!='Finance']
+print(f"{len(dataset)} questions after removing finance qs")
+
+# +
+# separate out different question types
+# only keep numeric answer questions
+# options are difficult to parse and usually not 4 options
+# bool questions only have 2 options and not exactly straightforward to create logical 4 options
+
+float_qs = [q for q in dataset if q['Answer_type']=='float']
+int_qs = [q for q in dataset if q['Answer_type']=='integer']
+list_float_qs = [q for q in dataset if q['Answer_type']=='list of float']
+list_int_qs = [q for q in dataset if q['Answer_type']=='list of integer']
+
+print(f"{len(float_qs)} float qs, {len(int_qs)} int qs, {len(list_float_qs)} list of float qs, {len(list_int_qs)} list of int qs")
+print(f"--> Total {len(float_qs) + len(list_float_qs) + len(int_qs) + len(list_int_qs)}")
+
+# +
+dataset_json = []
+
+for q in tqdm(float_qs + int_qs):
+
+    options_str, letter_answer = generate_random_options_from_numeric_answer(q['Answer'])
+
+    if options_str is None:
+        print(f"Skipping the following question, could not generate options in enough iterations:\n\n\tQuestion: {q['Question']}\n\tAnswer: {q['Answer']}\n")
+        continue
+    
+    question_str = f"Question: {q['Question']}\n\nOptions:\n{options_str}\n\nAnswer:"
+    dataset_json.append({'subject': q['field'], 'question': question_str, 'answer': letter_answer})
+    
+
+for q in tqdm(list_float_qs + list_int_qs):
+
+    options_str, letter_answer = generate_random_options_for_list_answers(q['Answer'])
+
+    if options_str is None:
+        print(f"Skipping the following question, could not generate options in enough iterations:\n\tQuestion: {q['Question']}\n\tAnswer: {q['Answer']}\n")
+        continue
+
+    question_str = f"Question: {q['Question']}\n\nOptions:\n{options_str}\n\nAnswer:"
+    dataset_json.append({'subject': q['field'], 'question': question_str, 'answer': letter_answer})
+
+print(f"Writing a total of {len(dataset_json)} MCQs for theorem QA")
+write_jsonl(dataset_json, f'../datasets/TheoremQA_mcqa.jsonl')
 # -
 
 
