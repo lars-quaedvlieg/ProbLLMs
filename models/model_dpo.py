@@ -47,22 +47,26 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         """
         super().__init__(pretrained_model, **kwargs)
 
-        if "encoder_model_path" in kwargs.keys():
-            self.rag = True
+        self.embed_model = None
+        self.is_rag = False
+        self.rag_args = {}
 
-            self.embed_model = HuggingFaceEmbedding(model_name=kwargs["encoder_model_path"])
+        if self.is_rag:
+            print(self.is_rag, self.rag_args)
+            self.embed_model = HuggingFaceEmbedding(model_name=self.rag_args["encoder_model_path"])
             Settings.embed_model = self.embed_model
 
-            storage_context = StorageContext.from_defaults(persist_dir=kwargs["document_dir"])
+            storage_context = StorageContext.from_defaults(persist_dir=self.rag_args["document_dir"])
+
+            print('Loading storage context...')
             index = load_index_from_storage(storage_context)
-            
-            self.similarity_top_k = kwargs.get("similarity_top_k", 2)
+            self.similarity_top_k = self.rag_args.get("similarity_top_k", 2)
 
             self.retriever = index.as_retriever(similarity_top_k=self.similarity_top_k)
 
         if not any(hasattr(self.pretrained_model, attribute) for attribute in self.lm_head_namings):
             raise ValueError("The model does not have a language model head, please use a model that has one.")
-        
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.pretrained_model = self.pretrained_model.to(self.device)
 
@@ -364,7 +368,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
 
         questions = batch["question"]
         prompts = []
-        if self.rag:
+        if self.is_rag:
             Settings.embed_model = self.embed_model
             for question in questions:
                 responses = self.retriever.retrieve(question)
@@ -395,7 +399,8 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         # Decode the generated output to text
         #generated_texts = [tokenizer.decode(output[-10:], skip_special_tokens=True) for output in outputs]
         id_to_char = ['A', 'B', 'C', 'D']
-        answer_ids = tokenizer(id_to_char, add_special_tokens=False)
+        answer_ids = tokenizer(id_to_char, add_special_tokens=False, return_tensors="pt").input_ids.squeeze(dim=-1)
+        #print(answer_ids)
         generated_texts = [id_to_char[i] for i in torch.argmax(outputs.logits[0][:, answer_ids], dim=-1)]
 
         # Non-mcqa

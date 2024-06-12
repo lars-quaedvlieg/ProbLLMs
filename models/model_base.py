@@ -129,7 +129,11 @@ class PreTrainedModelWrapper(nn.Module):
                 also support `prepare_model_for_kbit_training` arguments from
                 `peft` library.
         """
+        print(kwargs)
         if kwargs is not None:
+            is_rag = kwargs.pop("is_rag", False)
+            rag_args = kwargs.pop("rag_args", {}) if is_rag else {}
+
             peft_config = kwargs.pop("peft_config", None)
             reward_adapter = kwargs.pop("reward_adapter", None)
             reward_adapter_name = kwargs.pop("reward_adapter_name", "reward_adapter")
@@ -137,12 +141,16 @@ class PreTrainedModelWrapper(nn.Module):
             trl_model_args, pretrained_kwargs, peft_quantization_kwargs = cls._split_kwargs(kwargs)
             token = pretrained_kwargs.get("token", None)
         else:
+            is_rag = False
+            rag_args = {}
+
             peft_config = None
             is_trainable = False
             trl_model_args = {}
             pretrained_kwargs = {}
             peft_quantization_kwargs = {}
             token = None
+
 
         if reward_adapter is not None and not isinstance(reward_adapter, str):
             raise ValueError(
@@ -331,6 +339,9 @@ class PreTrainedModelWrapper(nn.Module):
 
         model.is_peft_model = is_peft_model
         model.current_device = current_device
+
+        model.is_rag = is_rag
+        model.rag_args
 
         if is_resuming_training:
             model.post_init(state_dict=state_dict)
