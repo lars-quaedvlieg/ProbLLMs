@@ -391,6 +391,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
         Returns:
             output_dict (`dict`): A dictionary containing the model predictions given input questions.
         """
+        #print(tokenizer)
         tokenizer.pad_token = tokenizer.eos_token
 
         output_dict = {"preds": []}
@@ -407,8 +408,7 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
                 prompts.append(
                     f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning afterwards. You can use the contextual knowledge we provide to help you answer the question.\n{context}\n{question}")
         else:
-            prompts = [
-                f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning after.\n\n{q}"
+            prompts = [f"Start by saying the letter corresponding to the correct answer (A, B, C, or D), and include your reasoning after.\n\n{q}"
                 for q in questions]
 
         #for prompt in prompts:
@@ -459,6 +459,12 @@ class AutoDPOModelForCausalLM(PreTrainedModelWrapper):
             print(final_ans, end='\r')
 
             output_dict["preds"].append(final_ans)
+
+#        for i in range(len(prompts)):
+ #           print(10*'-' + str(batch["answer"][i] == output_dict["preds"][i]) + 10*'-')
+  #          print('Prompt:', prompts[i])
+   #         print('Actual:', batch["answer"][i])
+    #        print('Pred:', output_dict["preds"][i])
 
         return output_dict
 

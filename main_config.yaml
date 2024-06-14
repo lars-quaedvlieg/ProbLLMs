@@ -1,14 +1,20 @@
-"team_name": "Team 1" # Your team name
-"eval_method": ["reward"] # mcqa, reward, rag, compression
+"team_name": "GradientVanishers" # Your team name
+"eval_method": ["mcqa", "rag", "quantiz"] # mcqa, reward, rag, quantiz
 "task_type": "causal_lm" # causal_lm, seq2seq
-"policy_model_path": "ProbLLMs/DPO_Checkpoint" # Your path to the final checkpoint
-"reference_model_path": "ProbLLMs/DPO_Reference" # The repo id of your pretrained reference model
-"quantized_policy_model_path": "./checkpoints/best_model_quantized/" # Your path to the final quantized checkpoint
-"rag_policy_model_path": "./checkpoints/best_model_rag/" # Your path to the final RAG checkpoint
-"test_data_path": "./datasets/dpo_preference_eval.jsonl" # Your path to the test data
-"dpo_model_args": null # Put any model arguments required to load your DPO model below
+"policy_model_path": "ProbLLMs/ProbLLM-DPO-mini" #"microsoft/Phi-3-mini-128k-instruct" #"out/dpo_lora_finetune-2024-06-11-18-28-53" # Your path to the final checkpoint
+"reference_model_path": "microsoft/Phi-3-mini-128k-instruct" #"microsoft/Phi-3-mini-128k-instruct" #"out/dpo_lora_finetune-2024-06-11-18-28-53" # The repo id of your pretrained reference model
+"quantized_policy_model_path": "ProbLLMs/ProbLLM-DPO-mini" #"out/dpo_lora_finetune-2024-06-11-18-28-53" # Your path to the final quantized checkpoint
+"rag_policy_model_path": "microsoft/Phi-3-mini-128k-instruct" #"ProbLLMs/ProbLLM-DPO-mini" # Your path to the final RAG checkpoint
+"test_data_path": "./data/test.jsonl" # Your path to the test data
+"dpo_model_args":
+  "trust_remote_code": true # Put any model arguments required to load your DPO model below
 "rag_model_args": # Put any model arguments required to load your rag model below
-  "encoder_model_path": "BAAI/bge-large-en"
-  "document_dir": "./data/documents/index"
-  "similarity_top_k": 3
-"quantized_model_args": null # Put any model arguments required to load your quantized model below
+  "trust_remote_code": true
+  "is_rag": true
+  "rag_args":
+    "encoder_model_path": "BAAI/bge-large-en" #"Alibaba-NLP/gte-large-en-v1.5"
+    "document_dir": "./documents/index"
+    "similarity_top_k": 3
+"quantized_model_args": # Put any model arguments required to load your quantized model below
+  "trust_remote_code": true
+  "load_in_8bit": true
